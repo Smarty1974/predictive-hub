@@ -1,4 +1,4 @@
-import { MLProject, UserGroup, User, PipelinePhase } from '@/types/ml-project';
+import { MLProject, UserGroup, User, PipelinePhase, PhaseLink, ActivityLog } from '@/types/ml-project';
 
 const createPipelineSteps = (statuses: Record<PipelinePhase, 'pending' | 'in_progress' | 'completed' | 'error'>) => {
   const phases: PipelinePhase[] = ['problem_understanding', 'data_collection', 'model_training', 'evaluation', 'deployment'];
@@ -6,6 +6,27 @@ const createPipelineSteps = (statuses: Record<PipelinePhase, 'pending' | 'in_pro
     id: `step-${index}`,
     phase,
     status: statuses[phase],
+    description: statuses[phase] !== 'pending' ? `Descrizione della fase ${phase.replace('_', ' ')}` : undefined,
+    links: statuses[phase] === 'completed' ? [
+      {
+        id: `link-${index}-1`,
+        title: 'Documentazione fase',
+        url: 'https://docs.example.com',
+        type: 'documentation' as PhaseLink['type'],
+        addedAt: new Date(),
+        addedBy: 'user-1',
+      }
+    ] : [],
+    activityLogs: statuses[phase] !== 'pending' ? [
+      {
+        id: `log-${index}-1`,
+        timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
+        action: 'Avviata fase',
+        details: `La fase ${phase.replace('_', ' ')} è stata avviata`,
+        userId: 'user-1',
+        userName: 'Marco Rossi',
+      }
+    ] : [],
     startedAt: statuses[phase] !== 'pending' ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000) : undefined,
     completedAt: statuses[phase] === 'completed' ? new Date() : undefined,
     logs: [],

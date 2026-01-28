@@ -30,10 +30,32 @@ export type MLAlgorithm =
   | 'kmeans'
   | 'pca';
 
+export interface PhaseLink {
+  id: string;
+  title: string;
+  url: string;
+  type: 'documentation' | 'dataset' | 'model' | 'notebook' | 'external';
+  addedAt: Date;
+  addedBy: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  timestamp: Date;
+  action: string;
+  details: string;
+  userId: string;
+  userName: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface PipelineStep {
   id: string;
   phase: PipelinePhase;
   status: PhaseStatus;
+  description?: string;
+  links: PhaseLink[];
+  activityLogs: ActivityLog[];
   startedAt?: Date;
   completedAt?: Date;
   logs: LogEntry[];

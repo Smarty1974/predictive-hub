@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, RotateCcw, GitBranch, Settings, FileText, Database, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RotateCcw, GitBranch, Settings, FileText, Database, BarChart3, Layers } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PipelineProgress } from '@/components/pipeline/PipelineProgress';
+import { PhaseDetailPanel } from '@/components/pipeline/PhaseDetailPanel';
 import { mockProjects } from '@/data/mock-data';
-import { PHASE_LABELS, ENGINE_LABELS, ALGORITHM_LABELS, PhaseStatus } from '@/types/ml-project';
+import { PHASE_LABELS, ENGINE_LABELS, ALGORITHM_LABELS, PhaseStatus, PipelineStep, PhaseLink, ActivityLog } from '@/types/ml-project';
 import { cn } from '@/lib/utils';
 
 const statusConfig: Record<PhaseStatus, { label: string; variant: string }> = {
@@ -19,7 +21,59 @@ const statusConfig: Record<PhaseStatus, { label: string; variant: string }> = {
 export default function ProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const project = mockProjects.find((p) => p.id === id);
+  const baseProject = mockProjects.find((p) => p.id === id);
+  const [project, setProject] = useState(baseProject);
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+
+  const handleUpdateDescription = (stepId: string, description: string) => {
+    if (!project) return;
+    setProject({
+      ...project,
+      pipeline: project.pipeline.map((step) =>
+        step.id === stepId ? { ...step, description } : step
+      ),
+    });
+  };
+
+  const handleAddLink = (stepId: string, link: Omit<PhaseLink, 'id' | 'addedAt'>) => {
+    if (!project) return;
+    const newLink: PhaseLink = {
+      ...link,
+      id: `link-${Date.now()}`,
+      addedAt: new Date(),
+    };
+    setProject({
+      ...project,
+      pipeline: project.pipeline.map((step) =>
+        step.id === stepId ? { ...step, links: [...step.links, newLink] } : step
+      ),
+    });
+  };
+
+  const handleRemoveLink = (stepId: string, linkId: string) => {
+    if (!project) return;
+    setProject({
+      ...project,
+      pipeline: project.pipeline.map((step) =>
+        step.id === stepId ? { ...step, links: step.links.filter((l) => l.id !== linkId) } : step
+      ),
+    });
+  };
+
+  const handleAddActivityLog = (stepId: string, log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
+    if (!project) return;
+    const newLog: ActivityLog = {
+      ...log,
+      id: `log-${Date.now()}`,
+      timestamp: new Date(),
+    };
+    setProject({
+      ...project,
+      pipeline: project.pipeline.map((step) =>
+        step.id === stepId ? { ...step, activityLogs: [newLog, ...step.activityLogs] } : step
+      ),
+    });
+  };
 
   if (!project) {
     return (
@@ -110,37 +164,80 @@ export default function ProjectDetail() {
           </TabsList>
 
           <TabsContent value="phases" className="space-y-4">
-            {project.pipeline.map((step) => {
-              const config = statusConfig[step.status];
-              return (
-                <div key={step.id} className="glass-card p-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={cn(
-                          'w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg',
-                          step.status === 'completed' && 'bg-success/20 text-success',
-                          step.status === 'in_progress' && 'bg-primary/20 text-primary animate-glow-pulse',
-                          step.status === 'pending' && 'bg-muted text-muted-foreground',
-                          step.status === 'error' && 'bg-destructive/20 text-destructive'
-                        )}
-                      >
-                        {project.pipeline.indexOf(step) + 1}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">{PHASE_LABELS[step.phase]}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {step.startedAt
-                            ? `Avviato: ${step.startedAt.toLocaleDateString('it-IT')}`
-                            : 'Non ancora avviato'}
-                        </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Phase List */}
+              <div className="space-y-3">
+                {project.pipeline.map((step, index) => {
+                  const config = statusConfig[step.status];
+                  const isSelected = selectedPhaseId === step.id;
+                  return (
+                    <div
+                      key={step.id}
+                      className={cn(
+                        'glass-card p-5 cursor-pointer transition-all',
+                        isSelected && 'ring-2 ring-primary'
+                      )}
+                      onClick={() => setSelectedPhaseId(isSelected ? null : step.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={cn(
+                              'w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg',
+                              step.status === 'completed' && 'bg-success/20 text-success',
+                              step.status === 'in_progress' && 'bg-primary/20 text-primary animate-glow-pulse',
+                              step.status === 'pending' && 'bg-muted text-muted-foreground',
+                              step.status === 'error' && 'bg-destructive/20 text-destructive'
+                            )}
+                          >
+                            {index + 1}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">{PHASE_LABELS[step.phase]}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {step.startedAt
+                                ? `Avviato: ${step.startedAt.toLocaleDateString('it-IT')}`
+                                : 'Non ancora avviato'}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              {step.links.length > 0 && <span>{step.links.length} link</span>}
+                              {step.activityLogs.length > 0 && <span>{step.activityLogs.length} log</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant={config.variant as any}>{config.label}</Badge>
                       </div>
                     </div>
-                    <Badge variant={config.variant as any}>{config.label}</Badge>
+                  );
+                })}
+              </div>
+
+              {/* Phase Detail Panel */}
+              <div>
+                {selectedPhaseId ? (
+                  (() => {
+                    const selectedStep = project.pipeline.find((s) => s.id === selectedPhaseId);
+                    if (!selectedStep) return null;
+                    return (
+                      <PhaseDetailPanel
+                        step={selectedStep}
+                        onUpdateDescription={(desc) => handleUpdateDescription(selectedPhaseId, desc)}
+                        onAddLink={(link) => handleAddLink(selectedPhaseId, link)}
+                        onRemoveLink={(linkId) => handleRemoveLink(selectedPhaseId, linkId)}
+                        onAddActivityLog={(log) => handleAddActivityLog(selectedPhaseId, log)}
+                      />
+                    );
+                  })()
+                ) : (
+                  <div className="glass-card p-8 text-center h-full flex items-center justify-center">
+                    <div className="text-muted-foreground">
+                      <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Seleziona una fase per visualizzare e gestire i dettagli</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                )}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="data">
@@ -221,6 +318,3 @@ export default function ProjectDetail() {
     </MainLayout>
   );
 }
-
-// Add missing import
-import { Layers } from 'lucide-react';
