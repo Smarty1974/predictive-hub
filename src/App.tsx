@@ -11,6 +11,7 @@ import Projects from "./pages/Projects";
 import Pipelines from "./pages/Pipelines";
 import Teams from "./pages/Teams";
 import Versions from "./pages/Versions";
+import Data from "./pages/Data";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/pipelines" element={<Pipelines />} />
             <Route path="/teams" element={<Teams />} />
             <Route path="/versions" element={<Versions />} />
+            <Route path="/data" element={<Data />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
