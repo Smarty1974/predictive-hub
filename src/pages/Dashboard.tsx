@@ -1,37 +1,64 @@
 import { useState } from 'react';
 import { FolderKanban, Layers, Users, TrendingUp, Filter } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
-import { ProjectCard } from '@/components/project/ProjectCard';
+import { SortableProjectCard } from '@/components/dashboard/SortableProjectCard';
 import { CreateProjectDialog } from '@/components/project/CreateProjectDialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockProjects, mockGroups } from '@/data/mock-data';
 import { useNavigate } from 'react-router-dom';
-import { MLEngine, MLAlgorithm } from '@/types/ml-project';
+import { MLEngine, MLAlgorithm, MLProject } from '@/types/ml-project';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [projects, setProjects] = useState<MLProject[]>(mockProjects);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const filteredProjects = mockProjects.filter((p) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const filteredProjects = projects.filter((p) => {
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
     if (groupFilter !== 'all' && p.groupId !== groupFilter) return false;
     return true;
   });
 
   const stats = {
-    totalProjects: mockProjects.length,
-    activePipelines: mockProjects.filter((p) => p.status === 'active').length,
+    totalProjects: projects.length,
+    activePipelines: projects.filter((p) => p.status === 'active').length,
     totalTeams: mockGroups.length,
     avgAccuracy: Math.round(
-      (mockProjects.filter((p) => p.metrics?.accuracy).reduce((acc, p) => acc + (p.metrics?.accuracy || 0), 0) /
-        mockProjects.filter((p) => p.metrics?.accuracy).length) *
+      (projects.filter((p) => p.metrics?.accuracy).reduce((acc, p) => acc + (p.metrics?.accuracy || 0), 0) /
+        projects.filter((p) => p.metrics?.accuracy).length) *
         100
     ),
   };
@@ -41,6 +68,22 @@ export default function Dashboard() {
       title: 'Progetto creato',
       description: `Il progetto "${data.name}" è stato creato con successo.`,
     });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setProjects((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+      toast({
+        title: 'Layout aggiornato',
+        description: 'La posizione delle card è stata salvata.',
+      });
+    }
   };
 
   return (
@@ -126,16 +169,27 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Project Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredProjects.slice(0, 4).map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                />
-              ))}
-            </div>
+            {/* Project Grid with Drag & Drop */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={filteredProjects.slice(0, 4).map((p) => p.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredProjects.slice(0, 4).map((project) => (
+                    <SortableProjectCard
+                      key={project.id}
+                      project={project}
+                      onClick={() => navigate(`/projects/${project.id}`)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
 
             {filteredProjects.length > 4 && (
               <div className="text-center">

@@ -1,14 +1,18 @@
-import { Bell, Search, Plus } from 'lucide-react';
+import { Bell, Search, Plus, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
 import { currentUser } from '@/data/mock-data';
+import { useTheme } from '@/components/theme/ThemeProvider';
 
 interface HeaderProps {
   onCreateProject?: () => void;
 }
 
 export function Header({ onCreateProject }: HeaderProps) {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-6">
       {/* Search */}
@@ -22,6 +26,17 @@ export function Header({ onCreateProject }: HeaderProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-4">
+        {/* Theme Toggle */}
+        <div className="flex items-center gap-2">
+          <Sun className="w-4 h-4 text-muted-foreground" />
+          <Switch
+            checked={theme === 'dark'}
+            onCheckedChange={toggleTheme}
+            aria-label="Toggle theme"
+          />
+          <Moon className="w-4 h-4 text-muted-foreground" />
+        </div>
+
         <Button variant="gradient" size="default" onClick={onCreateProject}>
           <Plus className="w-4 h-4" />
           Nuovo Progetto
