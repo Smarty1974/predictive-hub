@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Play, Pause, RotateCcw, GitBranch, Settings, 
   FileText, Database, BarChart3, Layers, GripVertical, 
-  Eye, EyeOff, RotateCw
+  Eye, EyeOff, RotateCw, Activity
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PipelineProgress } from '@/components/pipeline/PipelineProgress';
 import { PhaseDetailPanel } from '@/components/pipeline/PhaseDetailPanel';
 import { DraggablePhaseList } from '@/components/pipeline/DraggablePhaseList';
-import { mockProjects } from '@/data/mock-data';
+import { ProjectVersionPanel } from '@/components/version/ProjectVersionPanel';
+import { VersionComparisonSheet } from '@/components/version/VersionComparisonSheet';
+import { ActivityLogPanel } from '@/components/version/ActivityLogPanel';
+import { mockProjects, currentUser } from '@/data/mock-data';
 import { PHASE_LABELS, ENGINE_LABELS, ALGORITHM_LABELS, PhaseStatus, PipelineStep, PhaseLink, ActivityLog } from '@/types/ml-project';
 import { usePipelineLayout } from '@/hooks/usePipelineLayout';
+import { useVersioning, VersionChange } from '@/hooks/useVersioning';
+import { useActivityLog } from '@/hooks/useActivityLog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,6 +44,24 @@ export default function ProjectDetail() {
     resetLayout 
   } = usePipelineLayout(id || 'default');
 
+  const {
+    versions,
+    currentVersion,
+    createVersion,
+    restoreVersion,
+    compareVersions,
+  } = useVersioning(id || '');
+
+  const { logs, addLog } = useActivityLog(id);
+
+  // Comparison state
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [comparisonData, setComparisonData] = useState<{
+    version1: ReturnType<typeof compareVersions> extends infer T ? T extends { version1: infer V } ? V : never : never;
+    version2: ReturnType<typeof compareVersions> extends infer T ? T extends { version2: infer V } ? V : never : never;
+    changes: VersionChange[];
+  } | null>(null);
+
   // Apply saved phase order
   const orderedPipeline = project ? [...project.pipeline].sort((a, b) => {
     const orderA = layout.phaseOrder.indexOf(a.id);
@@ -51,16 +74,27 @@ export default function ProjectDetail() {
 
   const handleUpdateDescription = (stepId: string, description: string) => {
     if (!project) return;
+    const step = project.pipeline.find((s) => s.id === stepId);
     setProject({
       ...project,
-      pipeline: project.pipeline.map((step) =>
-        step.id === stepId ? { ...step, description } : step
+      pipeline: project.pipeline.map((s) =>
+        s.id === stepId ? { ...s, description } : s
       ),
+    });
+    addLog({
+      action: 'description_updated',
+      type: 'phase',
+      referenceId: stepId,
+      projectId: project.id,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      details: `Descrizione aggiornata per fase ${step ? PHASE_LABELS[step.phase] : stepId}`,
     });
   };
 
   const handleAddLink = (stepId: string, link: Omit<PhaseLink, 'id' | 'addedAt'>) => {
     if (!project) return;
+    const step = project.pipeline.find((s) => s.id === stepId);
     const newLink: PhaseLink = {
       ...link,
       id: `link-${Date.now()}`,
@@ -68,24 +102,35 @@ export default function ProjectDetail() {
     };
     setProject({
       ...project,
-      pipeline: project.pipeline.map((step) =>
-        step.id === stepId ? { ...step, links: [...step.links, newLink] } : step
+      pipeline: project.pipeline.map((s) =>
+        s.id === stepId ? { ...s, links: [...s.links, newLink] } : s
       ),
+    });
+    addLog({
+      action: 'link_added',
+      type: 'phase',
+      referenceId: stepId,
+      projectId: project.id,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      details: `Link "${link.title}" aggiunto a ${step ? PHASE_LABELS[step.phase] : stepId}`,
     });
   };
 
   const handleRemoveLink = (stepId: string, linkId: string) => {
     if (!project) return;
+    const step = project.pipeline.find((s) => s.id === stepId);
     setProject({
       ...project,
-      pipeline: project.pipeline.map((step) =>
-        step.id === stepId ? { ...step, links: step.links.filter((l) => l.id !== linkId) } : step
+      pipeline: project.pipeline.map((s) =>
+        s.id === stepId ? { ...s, links: s.links.filter((l) => l.id !== linkId) } : s
       ),
     });
   };
 
   const handleAddActivityLog = (stepId: string, log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
     if (!project) return;
+    const step = project.pipeline.find((s) => s.id === stepId);
     const newLog: ActivityLog = {
       ...log,
       id: `log-${Date.now()}`,
@@ -93,18 +138,93 @@ export default function ProjectDetail() {
     };
     setProject({
       ...project,
-      pipeline: project.pipeline.map((step) =>
-        step.id === stepId ? { ...step, activityLogs: [newLog, ...step.activityLogs] } : step
+      pipeline: project.pipeline.map((s) =>
+        s.id === stepId ? { ...s, activityLogs: [newLog, ...s.activityLogs] } : s
       ),
+    });
+    addLog({
+      action: 'phase_updated',
+      type: 'phase',
+      referenceId: stepId,
+      projectId: project.id,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      details: `Attività registrata: ${log.action} - ${step ? PHASE_LABELS[step.phase] : stepId}`,
     });
   };
 
   const handleReorderPhases = (newPhases: PipelineStep[]) => {
     if (!project) return;
     reorderPhases(newPhases.map(p => p.id));
+    addLog({
+      action: 'pipeline_reordered',
+      type: 'pipeline',
+      referenceId: project.id,
+      projectId: project.id,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      details: 'Ordine delle fasi riordinato',
+    });
     toast({
       title: 'Ordine salvato',
       description: 'La nuova disposizione delle fasi è stata salvata.',
+    });
+  };
+
+  const handleCompareVersions = (versionId1: string, versionId2: string) => {
+    const result = compareVersions(versionId1, versionId2);
+    if (result) {
+      setComparisonData(result);
+      setComparisonOpen(true);
+    }
+  };
+
+  const handleRestoreVersion = (versionId: string) => {
+    const restoredPipeline = restoreVersion(versionId);
+    if (restoredPipeline && project) {
+      setProject({
+        ...project,
+        pipeline: restoredPipeline,
+      });
+      addLog({
+        action: 'version_restored',
+        type: 'version',
+        referenceId: versionId,
+        projectId: project.id,
+        versionId,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        details: `Versione ${versionId.split('-v')[1]} ripristinata`,
+      });
+      toast({
+        title: 'Versione ripristinata',
+        description: 'La pipeline è stata ripristinata alla versione selezionata.',
+      });
+      setComparisonOpen(false);
+    }
+  };
+
+  const handleCreateVersion = (description: string) => {
+    if (!project) return;
+    const newVersion = createVersion(
+      project.name,
+      project.pipeline,
+      currentUser.name,
+      description
+    );
+    addLog({
+      action: 'version_created',
+      type: 'version',
+      referenceId: newVersion.id,
+      projectId: project.id,
+      versionId: newVersion.id,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      details: `Creata versione ${newVersion.version}: ${description}`,
+    });
+    toast({
+      title: 'Versione creata',
+      description: `Versione ${newVersion.version} salvata con successo.`,
     });
   };
 
@@ -222,6 +342,10 @@ export default function ProjectDetail() {
               <GitBranch className="w-4 h-4 mr-2" />
               Versioni
             </TabsTrigger>
+            <TabsTrigger value="activity" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Activity className="w-4 h-4 mr-2" />
+              Attività
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="phases" className="space-y-4">
@@ -320,35 +444,36 @@ export default function ProjectDetail() {
           </TabsContent>
 
           <TabsContent value="versions">
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="glass-card p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Badge variant="glass">v{project.currentVersion - i}</Badge>
-                    <div>
-                      <p className="text-sm text-foreground">
-                        {i === 0 ? 'Versione corrente' : `Aggiornamento parametri ${i === 1 ? 'precedente' : ''}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(Date.now() - i * 24 * 60 * 60 * 1000).toLocaleDateString('it-IT')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm">
-                      Confronta
-                    </Button>
-                    {i > 0 && (
-                      <Button variant="outline" size="sm">
-                        Ripristina
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="glass-card p-6">
+              <ProjectVersionPanel
+                versions={versions}
+                onCompare={handleCompareVersions}
+                onRestore={handleRestoreVersion}
+                onCreateVersion={handleCreateVersion}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="activity">
+            <div className="glass-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-semibold text-foreground">Attività Recenti</h3>
+              </div>
+              <ActivityLogPanel logs={logs} maxHeight="500px" />
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Version Comparison Sheet */}
+        <VersionComparisonSheet
+          open={comparisonOpen}
+          onOpenChange={setComparisonOpen}
+          version1={comparisonData?.version1 || null}
+          version2={comparisonData?.version2 || null}
+          changes={comparisonData?.changes || []}
+          onRestore={handleRestoreVersion}
+        />
       </div>
     </MainLayout>
   );
