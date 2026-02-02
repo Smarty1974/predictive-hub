@@ -1,15 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, RotateCcw, GitBranch, Settings, FileText, Database, BarChart3, Layers } from 'lucide-react';
+import { 
+  ArrowLeft, Play, Pause, RotateCcw, GitBranch, Settings, 
+  FileText, Database, BarChart3, Layers, GripVertical, 
+  Eye, EyeOff, RotateCw
+} from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PipelineProgress } from '@/components/pipeline/PipelineProgress';
 import { PhaseDetailPanel } from '@/components/pipeline/PhaseDetailPanel';
+import { DraggablePhaseList } from '@/components/pipeline/DraggablePhaseList';
 import { mockProjects } from '@/data/mock-data';
 import { PHASE_LABELS, ENGINE_LABELS, ALGORITHM_LABELS, PhaseStatus, PipelineStep, PhaseLink, ActivityLog } from '@/types/ml-project';
+import { usePipelineLayout } from '@/hooks/usePipelineLayout';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const statusConfig: Record<PhaseStatus, { label: string; variant: string }> = {
   pending: { label: 'In attesa', variant: 'pending' },
@@ -21,9 +28,26 @@ const statusConfig: Record<PhaseStatus, { label: string; variant: string }> = {
 export default function ProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const baseProject = mockProjects.find((p) => p.id === id);
   const [project, setProject] = useState(baseProject);
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+  
+  const { 
+    layout, 
+    reorderPhases, 
+    resetLayout 
+  } = usePipelineLayout(id || 'default');
+
+  // Apply saved phase order
+  const orderedPipeline = project ? [...project.pipeline].sort((a, b) => {
+    const orderA = layout.phaseOrder.indexOf(a.id);
+    const orderB = layout.phaseOrder.indexOf(b.id);
+    if (orderA === -1 && orderB === -1) return 0;
+    if (orderA === -1) return 1;
+    if (orderB === -1) return -1;
+    return orderA - orderB;
+  }) : [];
 
   const handleUpdateDescription = (stepId: string, description: string) => {
     if (!project) return;
@@ -72,6 +96,23 @@ export default function ProjectDetail() {
       pipeline: project.pipeline.map((step) =>
         step.id === stepId ? { ...step, activityLogs: [newLog, ...step.activityLogs] } : step
       ),
+    });
+  };
+
+  const handleReorderPhases = (newPhases: PipelineStep[]) => {
+    if (!project) return;
+    reorderPhases(newPhases.map(p => p.id));
+    toast({
+      title: 'Ordine salvato',
+      description: 'La nuova disposizione delle fasi è stata salvata.',
+    });
+  };
+
+  const handleResetLayout = () => {
+    resetLayout();
+    toast({
+      title: 'Layout ripristinato',
+      description: 'Il layout è stato ripristinato ai valori predefiniti.',
     });
   };
 
@@ -132,10 +173,30 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        {/* Pipeline Overview */}
+        {/* Pipeline Overview - Modern Stepper */}
         <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Pipeline Progress</h2>
-          <PipelineProgress steps={project.pipeline} />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Pipeline Progress</h2>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-muted" />
+                <span className="text-muted-foreground">In attesa</span>
+              </span>
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                <span className="text-muted-foreground">In corso</span>
+              </span>
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-success" />
+                <span className="text-muted-foreground">Completato</span>
+              </span>
+              <span className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-destructive" />
+                <span className="text-muted-foreground">Errore</span>
+              </span>
+            </div>
+          </div>
+          <PipelineProgress steps={orderedPipeline} />
         </div>
 
         {/* Tabs */}
@@ -164,56 +225,29 @@ export default function ProjectDetail() {
           </TabsList>
 
           <TabsContent value="phases" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Phase List */}
-              <div className="space-y-3">
-                {project.pipeline.map((step, index) => {
-                  const config = statusConfig[step.status];
-                  const isSelected = selectedPhaseId === step.id;
-                  return (
-                    <div
-                      key={step.id}
-                      className={cn(
-                        'glass-card p-5 cursor-pointer transition-all',
-                        isSelected && 'ring-2 ring-primary'
-                      )}
-                      onClick={() => setSelectedPhaseId(isSelected ? null : step.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={cn(
-                              'w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg',
-                              step.status === 'completed' && 'bg-success/20 text-success',
-                              step.status === 'in_progress' && 'bg-primary/20 text-primary animate-glow-pulse',
-                              step.status === 'pending' && 'bg-muted text-muted-foreground',
-                              step.status === 'error' && 'bg-destructive/20 text-destructive'
-                            )}
-                          >
-                            {index + 1}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground">{PHASE_LABELS[step.phase]}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {step.startedAt
-                                ? `Avviato: ${step.startedAt.toLocaleDateString('it-IT')}`
-                                : 'Non ancora avviato'}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              {step.links.length > 0 && <span>{step.links.length} link</span>}
-                              {step.activityLogs.length > 0 && <span>{step.activityLogs.length} log</span>}
-                            </div>
-                          </div>
-                        </div>
-                        <Badge variant={config.variant as any}>{config.label}</Badge>
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Layout controls */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <GripVertical className="w-4 h-4" />
+                <span>Trascina le card per riordinare le fasi</span>
               </div>
+              <Button variant="ghost" size="sm" onClick={handleResetLayout}>
+                <RotateCw className="w-4 h-4 mr-2" />
+                Ripristina ordine
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Draggable Phase List */}
+              <DraggablePhaseList
+                phases={orderedPipeline}
+                selectedPhaseId={selectedPhaseId}
+                onSelectPhase={setSelectedPhaseId}
+                onReorderPhases={handleReorderPhases}
+              />
 
               {/* Phase Detail Panel */}
-              <div>
+              <div className="lg:sticky lg:top-4 lg:self-start">
                 {selectedPhaseId ? (
                   (() => {
                     const selectedStep = project.pipeline.find((s) => s.id === selectedPhaseId);
@@ -229,10 +263,11 @@ export default function ProjectDetail() {
                     );
                   })()
                 ) : (
-                  <div className="glass-card p-8 text-center h-full flex items-center justify-center">
+                  <div className="glass-card p-8 text-center h-full flex items-center justify-center min-h-[400px]">
                     <div className="text-muted-foreground">
                       <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Seleziona una fase per visualizzare e gestire i dettagli</p>
+                      <p className="font-medium">Seleziona una fase</p>
+                      <p className="text-sm mt-1">Clicca su una fase per visualizzare e gestire i dettagli</p>
                     </div>
                   </div>
                 )}
