@@ -15,8 +15,19 @@ import { mockProjects, mockGroups } from '@/data/mock-data';
 import { MLEngine, MLAlgorithm, ENGINE_LABELS, ALGORITHM_LABELS } from '@/types/ml-project';
 import { useToast } from '@/hooks/use-toast';
 import { useViewPreferences } from '@/hooks/useViewPreferences';
-import { useTemplates } from '@/hooks/useTemplates';
+import { useTemplates, ALGORITHM_TO_TEMPLATE } from '@/hooks/useTemplates';
 import { cn } from '@/lib/utils';
+import { FileBox } from 'lucide-react';
+
+// Template names mapping
+const TEMPLATE_NAMES: Record<string, string> = {
+  'template-classification': 'Classificazione',
+  'template-regression': 'Regressione',
+  'template-nlp': 'NLP',
+  'template-computer-vision': 'Computer Vision',
+  'template-time-series': 'Serie Temporali',
+  'template-realtime': 'Realtime',
+};
 
 const statusVariants = {
   active: 'default',
@@ -170,7 +181,19 @@ export default function Projects() {
       case 'engine':
         return <Badge variant="glass">{ENGINE_LABELS[project.engine]}</Badge>;
       case 'algorithm':
-        return <Badge variant="glass">{ALGORITHM_LABELS[project.algorithm]}</Badge>;
+        const templateId = ALGORITHM_TO_TEMPLATE[project.algorithm];
+        const templateName = templateId ? TEMPLATE_NAMES[templateId] : null;
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant="glass">{ALGORITHM_LABELS[project.algorithm]}</Badge>
+            {templateName && (
+              <Badge variant="outline" className="bg-primary/5 border-primary/30 text-primary text-xs">
+                <FileBox className="w-3 h-3 mr-1" />
+                {templateName}
+              </Badge>
+            )}
+          </div>
+        );
       case 'pipeline':
         return (
           <div className="w-40">
