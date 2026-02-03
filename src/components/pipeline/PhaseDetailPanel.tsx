@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   FileText, Link2, Plus, Trash2, ExternalLink, 
   BookOpen, Database, Brain, FileCode, Globe,
-  Clock, User, Save, X, Edit2
+  Clock, User, Save, X, Edit2, Settings2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,9 +32,12 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PipelineStep, PhaseLink, ActivityLog, PHASE_LABELS } from '@/types/ml-project';
 import { cn } from '@/lib/utils';
+import { DataCollectionPanel } from '@/components/data/DataCollectionPanel';
+import { usePhaseData } from '@/hooks/usePhaseData';
 
 interface PhaseDetailPanelProps {
   step: PipelineStep;
+  projectId: string;
   onUpdateDescription?: (description: string) => void;
   onAddLink?: (link: Omit<PhaseLink, 'id' | 'addedAt'>) => void;
   onRemoveLink?: (linkId: string) => void;
@@ -51,6 +54,7 @@ const linkTypeConfig: Record<PhaseLink['type'], { icon: typeof BookOpen; label: 
 
 export function PhaseDetailPanel({ 
   step, 
+  projectId,
   onUpdateDescription, 
   onAddLink, 
   onRemoveLink,
@@ -60,6 +64,10 @@ export function PhaseDetailPanel({
   const [description, setDescription] = useState(step.description || '');
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [isAddingLog, setIsAddingLog] = useState(false);
+  
+  // Data collection phase handling
+  const { getDataCollectionConfig, updateDataCollectionConfig } = usePhaseData(projectId);
+  const isDataCollectionPhase = step.phase === 'data_collection';
   
   // New link form state
   const [newLink, setNewLink] = useState({
@@ -115,7 +123,7 @@ export function PhaseDetailPanel({
         </Badge>
       </div>
 
-      <Accordion type="multiple" defaultValue={['description', 'links', 'logs']} className="space-y-2">
+      <Accordion type="multiple" defaultValue={['description', 'links', 'logs', 'data-collection']} className="space-y-2">
         {/* Description Section */}
         <AccordionItem value="description" className="border-none">
           <AccordionTrigger className="glass-card px-4 py-3 hover:no-underline rounded-lg">
@@ -387,6 +395,25 @@ export function PhaseDetailPanel({
             </div>
           </AccordionContent>
         </AccordionItem>
+
+        {/* Data Collection Section - Only for data_collection phase */}
+        {isDataCollectionPhase && (
+          <AccordionItem value="data-collection" className="border-none">
+            <AccordionTrigger className="glass-card px-4 py-3 hover:no-underline rounded-lg">
+              <div className="flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-primary" />
+                <span className="font-medium">Configurazione Dati</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-3">
+              <DataCollectionPanel
+                projectId={projectId}
+                selectedDatasets={getDataCollectionConfig(step.id)}
+                onUpdateDatasets={(datasets) => updateDataCollectionConfig(step.id, datasets)}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        )}
       </Accordion>
     </div>
   );
