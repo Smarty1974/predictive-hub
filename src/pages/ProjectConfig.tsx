@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Settings, Workflow, Info, Save, FileBox, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Workflow, Info, Save, FileBox, Check, RefreshCw } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProcessCard } from '@/components/config/ProcessCard';
 import { ProcessFormDialog } from '@/components/config/ProcessFormDialog';
@@ -34,6 +34,7 @@ export default function ProjectConfig() {
   const [editingProcess, setEditingProcess] = useState<Process | null>(null);
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
   const [templateSelectionOpen, setTemplateSelectionOpen] = useState(false);
+  const [changeTemplateConfirmOpen, setChangeTemplateConfirmOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [templateData, setTemplateData] = useState({
     name: '',
@@ -148,7 +149,21 @@ export default function ProjectConfig() {
     });
     
     setTemplateSelectionOpen(false);
+    setChangeTemplateConfirmOpen(false);
     setSelectedTemplateId('');
+  };
+
+  const handleChangeTemplate = () => {
+    if (processes.length > 0) {
+      setChangeTemplateConfirmOpen(true);
+    } else {
+      setTemplateSelectionOpen(true);
+    }
+  };
+
+  const handleConfirmChangeTemplate = () => {
+    setChangeTemplateConfirmOpen(false);
+    setTemplateSelectionOpen(true);
   };
 
   // Sort processes by dependency chain
@@ -174,6 +189,14 @@ export default function ProjectConfig() {
             <p className="text-muted-foreground">{project.name}</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={handleChangeTemplate}
+            >
+              <RefreshCw className="w-4 h-4" />
+              {processes.length > 0 ? 'Cambia Template' : 'Usa Template'}
+            </Button>
             {processes.length > 0 && (
               <Button 
                 variant="outline" 
@@ -400,6 +423,51 @@ export default function ProjectConfig() {
             </Button>
             <Button onClick={handleInitializeFromTemplate} disabled={!selectedTemplateId}>
               Applica Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Template Confirmation Dialog */}
+      <Dialog open={changeTemplateConfirmOpen} onOpenChange={setChangeTemplateConfirmOpen}>
+        <DialogContent className="glass-card border-glass-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-warning">
+              <RefreshCw className="w-5 h-5" />
+              Cambia Template
+            </DialogTitle>
+            <DialogDescription>
+              Hai già {processes.length} processo/i configurato/i. Applicare un nuovo template sovrascriverà 
+              la configurazione esistente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-sm">
+              <p className="font-medium text-warning mb-1">Attenzione</p>
+              <p className="text-muted-foreground">
+                Tutti i processi e le fasi attuali verranno sostituiti. 
+                Considera di salvare la configurazione corrente come template prima di procedere.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setChangeTemplateConfirmOpen(false)}>
+              Annulla
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setChangeTemplateConfirmOpen(false);
+                setSaveTemplateDialogOpen(true);
+              }}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Salva prima
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmChangeTemplate}>
+              Prosegui
             </Button>
           </DialogFooter>
         </DialogContent>
