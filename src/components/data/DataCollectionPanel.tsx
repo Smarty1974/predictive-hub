@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Database, Plus, Trash2, Eye, Search, Settings2,
   FileSpreadsheet, Columns, ChevronDown, ChevronUp,
-  Merge, Save, ArrowRight, Filter, X
+  Merge, Save, ArrowRight, Filter, X, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { useDatasets } from '@/hooks/useDatasets';
+import { TransformationPreview } from './TransformationPreview';
 import {
   Dataset,
   ColumnSchema,
@@ -464,128 +465,168 @@ export function DataCollectionPanel({
 
       {/* Transformation Dialog */}
       <Dialog open={transformDialogOpen} onOpenChange={setTransformDialogOpen}>
-        <DialogContent className="glass-card border-glass-border sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Gestione Trasformazioni</DialogTitle>
+        <DialogContent className="glass-card border-glass-border w-[95vw] max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Gestione Trasformazioni
+            </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-6 py-4">
-            {/* Left: Transformation List */}
-            <div className="space-y-4">
-              <h4 className="font-medium">SELEZIONA TRASFORMAZIONE</h4>
-              <div className="space-y-2">
-                {activeDatasetId && selectedDatasets.find(d => d.datasetId === activeDatasetId)?.transformations.map((t, i) => (
-                  <div key={t.id} className="flex items-center justify-between p-2 rounded bg-muted/30">
-                    <span>{i + 1}. {t.name}</span>
-                    <div className="flex items-center gap-1">
-                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          
+          <div className="flex-1 overflow-y-auto min-h-0 py-4 space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              {/* Left: Transformation List */}
+              <div className="space-y-4">
+                <h4 className="font-medium">SELEZIONA TRASFORMAZIONE</h4>
+                <div className="space-y-2">
+                  {activeDatasetId && selectedDatasets.find(d => d.datasetId === activeDatasetId)?.transformations.map((t, i) => (
+                    <div key={t.id} className="flex items-center justify-between p-2 rounded bg-muted/30">
+                      <span>{i + 1}. {t.name}</span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          <ChevronUp className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          onClick={() => handleRemoveTransformation(activeDatasetId, t.id)}
+                        >
+                          <Trash2 className="w-3 h-3 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => setEditingTransformation({} as DataTransformation)}
-                >
-                  Aggiungi
-                </Button>
-              </div>
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">LOGS</h4>
-                <div className="p-3 rounded bg-muted/30 min-h-[100px] text-sm text-muted-foreground">
-                  Log delle trasformazioni applicate...
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setEditingTransformation({} as DataTransformation)}
+                  >
+                    Aggiungi
+                  </Button>
                 </div>
               </div>
-            </div>
 
-            {/* Right: Function Editor */}
-            <div className="space-y-4">
-              <h4 className="font-medium">FUNCTION</h4>
-              <div className="flex items-center gap-2">
-                <Search className="w-4 h-4 text-muted-foreground" />
-                <Select
-                  value={newTransformation.functionCategory || 'text'}
-                  onValueChange={(value) => setNewTransformation({ ...newTransformation, functionCategory: value as TransformFunctionCategory })}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(FUNCTION_CATEGORIES).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Nome Nuova Colonna</Label>
-                <Input
-                  value={newTransformation.columnName || ''}
-                  onChange={(e) => setNewTransformation({ ...newTransformation, columnName: e.target.value })}
-                  placeholder="Es. colonna_normalizzata"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label>Funzione</Label>
+              {/* Right: Function Editor */}
+              <div className="space-y-4">
+                <h4 className="font-medium">FUNCTION</h4>
+                <div className="flex items-center gap-2">
+                  <Search className="w-4 h-4 text-muted-foreground" />
                   <Select
-                    value={newTransformation.functionType || 'IF_MISSING'}
-                    onValueChange={(value) => handleFunctionTypeChange(value as TransformFunctionType)}
+                    value={newTransformation.functionCategory || 'text'}
+                    onValueChange={(value) => setNewTransformation({ ...newTransformation, functionCategory: value as TransformFunctionCategory })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="flex-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(TRANSFORM_FUNCTIONS)
-                        .filter(([_, f]) => f.category === newTransformation.functionCategory)
-                        .map(([key, func]) => (
-                          <SelectItem key={key} value={key}>{func.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Variabile</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona colonna" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeDatasetId && getDatasetSchema(activeDatasetId).map((col) => (
-                        <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>
+                      {Object.entries(FUNCTION_CATEGORIES).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="p-4 rounded-lg bg-muted/30 font-mono text-sm">
-                <span className="text-primary">{newTransformation.functionType}</span>
-                <span className="text-muted-foreground"> (x, fill) '</span>
-                <span className="text-warning">{newTransformation.sourceColumns?.[0] || 'COLUMN_NAME'}</span>
-                <span className="text-muted-foreground">'</span>
-              </div>
+                <div className="space-y-2">
+                  <Label>Nome Nuova Colonna</Label>
+                  <Input
+                    value={newTransformation.columnName || ''}
+                    onChange={(e) => setNewTransformation({ ...newTransformation, columnName: e.target.value })}
+                    placeholder="Es. colonna_normalizzata"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label>Nome Trasformazione</Label>
-                <Input
-                  value={newTransformation.name || ''}
-                  onChange={(e) => setNewTransformation({ ...newTransformation, name: e.target.value })}
-                  placeholder="Es. Gestione valori mancanti"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label>Funzione</Label>
+                    <Select
+                      value={newTransformation.functionType || 'IF_MISSING'}
+                      onValueChange={(value) => handleFunctionTypeChange(value as TransformFunctionType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(TRANSFORM_FUNCTIONS)
+                          .filter(([_, f]) => f.category === newTransformation.functionCategory)
+                          .map(([key, func]) => (
+                            <SelectItem key={key} value={key}>{func.label}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Colonna Sorgente</Label>
+                    <Select
+                      value={newTransformation.sourceColumns?.[0] || ''}
+                      onValueChange={(value) => setNewTransformation({ 
+                        ...newTransformation, 
+                        sourceColumns: [value] 
+                      })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona colonna" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeDatasetId && getDatasetSchema(activeDatasetId).map((col) => (
+                          <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-lg bg-muted/30 font-mono text-sm">
+                  <span className="text-primary">{newTransformation.functionType}</span>
+                  <span className="text-muted-foreground"> (</span>
+                  <span className="text-warning">{newTransformation.sourceColumns?.[0] || 'COLUMN_NAME'}</span>
+                  <span className="text-muted-foreground">)</span>
+                  <span className="text-muted-foreground"> → </span>
+                  <span className="text-primary font-semibold">{newTransformation.columnName || 'nuova_colonna'}</span>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Nome Trasformazione</Label>
+                  <Input
+                    value={newTransformation.name || ''}
+                    onChange={(e) => setNewTransformation({ ...newTransformation, name: e.target.value })}
+                    placeholder="Es. Gestione valori mancanti"
+                  />
+                </div>
               </div>
             </div>
+
+            {/* Live Preview Section */}
+            {activeDatasetId && (() => {
+              const activeDataset = datasets.find(d => d.id === activeDatasetId);
+              const activeConfig = selectedDatasets.find(d => d.datasetId === activeDatasetId);
+              
+              if (activeDataset && activeConfig) {
+                return (
+                  <div className="border-t border-border pt-4">
+                    <TransformationPreview
+                      dataset={activeDataset}
+                      config={activeConfig}
+                      newTransformation={newTransformation}
+                    />
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="flex-shrink-0 border-t border-border pt-4">
             <Button variant="outline" onClick={() => setTransformDialogOpen(false)}>
               Annulla
             </Button>
             <Button onClick={handleAddTransformation}>
               <Save className="w-4 h-4 mr-2" />
-              Salva
+              Salva Trasformazione
             </Button>
           </DialogFooter>
         </DialogContent>
