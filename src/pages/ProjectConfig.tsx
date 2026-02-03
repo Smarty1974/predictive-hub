@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Settings, Workflow, Info, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Workflow, Info, Save, FileBox, Check } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProcessCard } from '@/components/config/ProcessCard';
 import { ProcessFormDialog } from '@/components/config/ProcessFormDialog';
@@ -11,12 +11,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useProcesses } from '@/hooks/useProcesses';
 import { useTemplates } from '@/hooks/useTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { mockProjects } from '@/data/mock-data';
 import { Process, PhaseType } from '@/types/process';
 import { ProjectTemplate, TEMPLATE_CATEGORY_LABELS } from '@/types/template';
+import { cn } from '@/lib/utils';
 
 export default function ProjectConfig() {
   const { id } = useParams();
@@ -24,12 +27,14 @@ export default function ProjectConfig() {
   const { toast } = useToast();
   
   const project = mockProjects.find((p) => p.id === id);
-  const { processes, createProcess, updateProcess, deleteProcess, togglePhase } = useProcesses(id || '');
-  const { saveAsTemplate } = useTemplates();
+  const { processes, initialized, createProcess, updateProcess, deleteProcess, togglePhase, initializeFromTemplate } = useProcesses(id || '');
+  const { templates, saveAsTemplate } = useTemplates();
   
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingProcess, setEditingProcess] = useState<Process | null>(null);
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
+  const [templateSelectionOpen, setTemplateSelectionOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [templateData, setTemplateData] = useState({
     name: '',
     description: '',
@@ -124,6 +129,28 @@ export default function ProjectConfig() {
     setTemplateData({ name: '', description: '', category: 'custom' });
   };
 
+  const handleInitializeFromTemplate = () => {
+    const template = templates.find(t => t.id === selectedTemplateId);
+    if (!template) {
+      toast({
+        title: 'Errore',
+        description: 'Seleziona un template valido.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    initializeFromTemplate(template.processes);
+    
+    toast({
+      title: 'Template applicato',
+      description: `Il progetto è stato inizializzato con ${template.processes.length} processo/i dal template "${template.name}".`,
+    });
+    
+    setTemplateSelectionOpen(false);
+    setSelectedTemplateId('');
+  };
+
   // Sort processes by dependency chain
   const sortedProcesses = [...processes].sort((a, b) => {
     if (a.previousProcessId === b.id) return 1;
@@ -175,17 +202,23 @@ export default function ProjectConfig() {
         </Alert>
 
         {/* Processes List */}
-        {sortedProcesses.length === 0 ? (
+        {initialized && sortedProcesses.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <Workflow className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">Nessun Processo Configurato</h3>
             <p className="text-muted-foreground mb-4">
-              Inizia creando il tuo primo processo per definire le fasi del workflow ML.
+              Inizia creando il tuo primo processo o seleziona un template predefinito.
             </p>
-            <Button onClick={handleCreateProcess} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Crea Primo Processo
-            </Button>
+            <div className="flex items-center justify-center gap-3">
+              <Button variant="outline" onClick={() => setTemplateSelectionOpen(true)} className="gap-2">
+                <FileBox className="w-4 h-4" />
+                Usa Template
+              </Button>
+              <Button onClick={handleCreateProcess} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Crea Processo
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -298,6 +331,75 @@ export default function ProjectConfig() {
             </Button>
             <Button onClick={handleSaveAsTemplate}>
               Salva Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Selection Dialog */}
+      <Dialog open={templateSelectionOpen} onOpenChange={setTemplateSelectionOpen}>
+        <DialogContent className="glass-card border-glass-border sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileBox className="w-5 h-5 text-primary" />
+              Inizializza da Template
+            </DialogTitle>
+            <DialogDescription>
+              Seleziona un template per configurare automaticamente i processi del progetto.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-4">
+            {templates.map((template) => (
+              <Card
+                key={template.id}
+                className={cn(
+                  "p-4 cursor-pointer transition-all border-2",
+                  selectedTemplateId === template.id 
+                    ? "border-primary bg-primary/5" 
+                    : "border-transparent hover:border-border"
+                )}
+                onClick={() => setSelectedTemplateId(template.id)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{template.name}</p>
+                      <Badge variant="secondary" className="text-xs">
+                        {TEMPLATE_CATEGORY_LABELS[template.category]}
+                      </Badge>
+                      {template.isDefault && (
+                        <Badge variant="outline" className="text-xs">Default</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {template.description}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                      <span>{template.processes.length} processo/i</span>
+                      <span>•</span>
+                      <span>
+                        {template.processes.reduce((acc, p) => acc + p.enabledPhases.length, 0)} fasi
+                      </span>
+                    </div>
+                  </div>
+                  {selectedTemplateId === template.id && (
+                    <Check className="w-5 h-5 text-primary flex-shrink-0" />
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setTemplateSelectionOpen(false);
+              setSelectedTemplateId('');
+            }}>
+              Annulla
+            </Button>
+            <Button onClick={handleInitializeFromTemplate} disabled={!selectedTemplateId}>
+              Applica Template
             </Button>
           </DialogFooter>
         </DialogContent>
