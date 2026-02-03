@@ -33,6 +33,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { PipelineStep, PhaseLink, ActivityLog, PHASE_LABELS } from '@/types/ml-project';
 import { cn } from '@/lib/utils';
 import { DataCollectionPanel } from '@/components/data/DataCollectionPanel';
+import { ModelingPanel } from '@/components/modeling/ModelingPanel';
 import { usePhaseData } from '@/hooks/usePhaseData';
 
 interface PhaseDetailPanelProps {
@@ -65,9 +66,22 @@ export function PhaseDetailPanel({
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [isAddingLog, setIsAddingLog] = useState(false);
   
-  // Data collection phase handling
-  const { getDataCollectionConfig, updateDataCollectionConfig } = usePhaseData(projectId);
+  // Phase data handling
+  const { 
+    getDataCollectionConfig, 
+    updateDataCollectionConfig,
+    getModelingConfig,
+    updateModelingConfig,
+    updateHyperParameter,
+    setAlgorithm,
+  } = usePhaseData(projectId);
+  
   const isDataCollectionPhase = step.phase === 'data_collection';
+  const isModelingPhase = step.phase === 'model_training';
+  
+  // Get data from data collection phase for modeling
+  const dataCollectionDatasets = getDataCollectionConfig(step.id);
+  const modelingConfig = getModelingConfig(step.id);
   
   // New link form state
   const [newLink, setNewLink] = useState({
@@ -123,7 +137,7 @@ export function PhaseDetailPanel({
         </Badge>
       </div>
 
-      <Accordion type="multiple" defaultValue={['data-collection', 'description', 'links', 'logs']} className="space-y-2">
+      <Accordion type="multiple" defaultValue={['data-collection', 'modeling', 'description', 'links', 'logs']} className="space-y-2">
         {/* Data Collection Section - FIRST for data_collection phase */}
         {isDataCollectionPhase && (
           <AccordionItem value="data-collection" className="border-none">
@@ -138,6 +152,28 @@ export function PhaseDetailPanel({
                 projectId={projectId}
                 selectedDatasets={getDataCollectionConfig(step.id)}
                 onUpdateDatasets={(datasets) => updateDataCollectionConfig(step.id, datasets)}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
+        {/* Modeling Section - FIRST for model_training phase */}
+        {isModelingPhase && (
+          <AccordionItem value="modeling" className="border-none">
+            <AccordionTrigger className="glass-card px-4 py-3 hover:no-underline rounded-lg bg-primary/5 border-2 border-primary/20">
+              <div className="flex items-center gap-2">
+                <Brain className="w-4 h-4 text-primary" />
+                <span className="font-medium text-primary">Configurazione Modello</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-3">
+              <ModelingPanel
+                processId={step.id}
+                modelingConfig={modelingConfig}
+                availableDatasets={dataCollectionDatasets}
+                onUpdateConfig={(config) => updateModelingConfig(step.id, config)}
+                onSetAlgorithm={(family, type) => setAlgorithm(step.id, family, type)}
+                onUpdateHyperParameter={(name, updates) => updateHyperParameter(step.id, name, updates)}
               />
             </AccordionContent>
           </AccordionItem>
