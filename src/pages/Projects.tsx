@@ -66,6 +66,10 @@ export default function Projects() {
       .filter((p) => {
         if (preferences.statusFilter !== 'all' && p.status !== preferences.statusFilter) return false;
         if (preferences.groupFilter !== 'all' && p.groupId !== preferences.groupFilter) return false;
+        if (preferences.templateFilter !== 'all') {
+          const projectTemplateId = ALGORITHM_TO_TEMPLATE[p.algorithm];
+          if (projectTemplateId !== preferences.templateFilter) return false;
+        }
         return true;
       })
       .sort((a, b) => {
@@ -74,7 +78,7 @@ export default function Projects() {
         if (preferences.sortBy === 'name') return a.name.localeCompare(b.name);
         return 0;
       });
-  }, [preferences.statusFilter, preferences.groupFilter, preferences.sortBy]);
+  }, [preferences.statusFilter, preferences.groupFilter, preferences.templateFilter, preferences.sortBy]);
 
   const { templates } = useTemplates();
 
@@ -285,6 +289,26 @@ export default function Projects() {
                 {mockGroups.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
                     {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select 
+              value={preferences.templateFilter} 
+              onValueChange={(value) => updatePreference('templateFilter', value)}
+            >
+              <SelectTrigger className="w-44 bg-muted/50">
+                <SelectValue placeholder="Template" />
+              </SelectTrigger>
+              <SelectContent className="glass-card">
+                <SelectItem value="all">Tutti i template</SelectItem>
+                {Object.entries(TEMPLATE_NAMES).map(([id, name]) => (
+                  <SelectItem key={id} value={id}>
+                    <div className="flex items-center gap-2">
+                      <FileBox className="w-3.5 h-3.5" />
+                      {name}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
