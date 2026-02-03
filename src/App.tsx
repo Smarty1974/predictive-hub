@@ -14,6 +14,7 @@ import Teams from "./pages/Teams";
 import Versions from "./pages/Versions";
 import Data from "./pages/Data";
 import Settings from "./pages/Settings";
+import Templates from "./pages/Templates";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/teams" element={<Teams />} />
             <Route path="/versions" element={<Versions />} />
             <Route path="/data" element={<Data />} />
+            <Route path="/templates" element={<Templates />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

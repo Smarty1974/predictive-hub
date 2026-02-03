@@ -11,6 +11,7 @@ import {
   History,
   Database,
   Layers,
+  FileBox,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: FolderKanban, label: 'Progetti', path: '/projects' },
   { icon: Layers, label: 'Pipeline', path: '/pipelines' },
+  { icon: FileBox, label: 'Template', path: '/templates' },
   { icon: History, label: 'Versioni', path: '/versions' },
   { icon: Users, label: 'Team', path: '/teams' },
   { icon: Database, label: 'Dati', path: '/data' },
