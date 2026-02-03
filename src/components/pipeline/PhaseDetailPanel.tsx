@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   FileText, Link2, Plus, Trash2, ExternalLink, 
   BookOpen, Database, Brain, FileCode, Globe,
-  Clock, User, Save, X, Edit2, Settings2, BarChart3
+  Clock, User, Save, X, Edit2, Settings2, BarChart3, Rocket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { DataCollectionPanel } from '@/components/data/DataCollectionPanel';
 import { ModelingPanel } from '@/components/modeling/ModelingPanel';
 import { EvaluationPanel } from '@/components/evaluation/EvaluationPanel';
+import { ProductionPanel } from '@/components/production/ProductionPanel';
 import { usePhaseData } from '@/hooks/usePhaseData';
 
 interface PhaseDetailPanelProps {
@@ -79,11 +80,15 @@ export function PhaseDetailPanel({
     getAllTrainingRuns,
     getEvaluationConfig,
     updateEvaluationConfig,
+    getProductionSelectedEvaluation,
+    getProductionConfig,
+    updateProductionConfig,
   } = usePhaseData(projectId);
   
   const isDataCollectionPhase = step.phase === 'data_collection';
   const isModelingPhase = step.phase === 'model_training';
   const isEvaluationPhase = step.phase === 'evaluation';
+  const isDeploymentPhase = step.phase === 'deployment';
   
   // Get data from data collection phase for modeling - use ALL datasets across project
   const allDataCollectionDatasets = getAllDataCollectionConfigs();
@@ -92,6 +97,10 @@ export function PhaseDetailPanel({
   // Get all training runs for evaluation phase
   const allTrainingRuns = getAllTrainingRuns();
   const evaluationConfig = getEvaluationConfig(step.id);
+  
+  // Get production data
+  const selectedEvaluationRun = getProductionSelectedEvaluation();
+  const productionConfig = getProductionConfig(step.id);
   
   // New link form state
   const [newLink, setNewLink] = useState({
@@ -147,7 +156,7 @@ export function PhaseDetailPanel({
         </Badge>
       </div>
 
-      <Accordion type="multiple" defaultValue={['data-collection', 'modeling', 'evaluation', 'description', 'links', 'logs']} className="space-y-2">
+      <Accordion type="multiple" defaultValue={['data-collection', 'modeling', 'evaluation', 'production', 'description', 'links', 'logs']} className="space-y-2">
         {/* Data Collection Section - FIRST for data_collection phase */}
         {isDataCollectionPhase && (
           <AccordionItem value="data-collection" className="border-none">
@@ -204,6 +213,26 @@ export function PhaseDetailPanel({
                 evaluationConfig={evaluationConfig}
                 availableTrainingRuns={allTrainingRuns}
                 onUpdateConfig={(config) => updateEvaluationConfig(step.id, config)}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
+        {/* Production Section - FIRST for deployment phase */}
+        {isDeploymentPhase && (
+          <AccordionItem value="production" className="border-none">
+            <AccordionTrigger className="glass-card px-4 py-3 hover:no-underline rounded-lg bg-primary/5 border-2 border-primary/20">
+              <div className="flex items-center gap-2">
+                <Rocket className="w-4 h-4 text-primary" />
+                <span className="font-medium text-primary">Gestione Produzione</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-3">
+              <ProductionPanel
+                processId={step.id}
+                productionConfig={productionConfig}
+                selectedEvaluationRun={selectedEvaluationRun}
+                onUpdateConfig={(config) => updateProductionConfig(step.id, config)}
               />
             </AccordionContent>
           </AccordionItem>

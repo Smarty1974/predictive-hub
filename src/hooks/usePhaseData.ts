@@ -3,10 +3,12 @@ import { SelectedDatasetConfig } from '@/types/dataset';
 import { 
   ModelingConfig, 
   EvaluationConfig,
+  ProductionConfig,
   AlgorithmFamily, 
   AlgorithmType, 
   HyperParameter, 
   TrainingRun,
+  EvaluationRun,
   getAlgorithmConfig 
 } from '@/types/modeling';
 
@@ -20,6 +22,7 @@ interface PhaseDataConfig {
   };
   modelingConfig?: ModelingConfig;
   evaluationConfig?: EvaluationConfig;
+  productionConfig?: ProductionConfig;
 }
 
 export function usePhaseData(projectId: string) {
@@ -192,6 +195,47 @@ export function usePhaseData(projectId: string) {
     return config?.evaluationConfig;
   }, [getPhaseConfig]);
 
+  // Get selected production model from any evaluation phase
+  const getProductionSelectedEvaluation = useCallback((): EvaluationRun | undefined => {
+    for (const config of Object.values(phaseConfigs)) {
+      if (config.phaseType === 'valutazione' && config.evaluationConfig?.productionModelId) {
+        const evalRun = config.evaluationConfig.evaluationRuns?.find(
+          r => r.id === config.evaluationConfig?.productionModelId
+        );
+        if (evalRun) return evalRun;
+      }
+    }
+    return undefined;
+  }, [phaseConfigs]);
+
+  // Production Config
+  const updateProductionConfig = useCallback((
+    processId: string,
+    productionConfig: Partial<ProductionConfig>
+  ) => {
+    const key = getPhaseKey(processId, 'produzione');
+    const existingConfig = phaseConfigs[key]?.productionConfig;
+    
+    const updated = {
+      ...phaseConfigs,
+      [key]: {
+        ...phaseConfigs[key],
+        processId,
+        phaseType: 'produzione',
+        productionConfig: {
+          ...existingConfig,
+          ...productionConfig,
+        } as ProductionConfig,
+      },
+    };
+    savePhaseConfigs(updated);
+  }, [phaseConfigs, savePhaseConfigs]);
+
+  const getProductionConfig = useCallback((processId: string): ProductionConfig | undefined => {
+    const config = getPhaseConfig(processId, 'produzione');
+    return config?.productionConfig;
+  }, [getPhaseConfig]);
+
   return {
     initialized,
     getPhaseConfig,
@@ -205,5 +249,8 @@ export function usePhaseData(projectId: string) {
     getAllTrainingRuns,
     updateEvaluationConfig,
     getEvaluationConfig,
+    getProductionSelectedEvaluation,
+    updateProductionConfig,
+    getProductionConfig,
   };
 }
