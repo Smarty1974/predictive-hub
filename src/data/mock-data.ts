@@ -1,9 +1,17 @@
 import { MLProject, UserGroup, User, PipelinePhase, PhaseLink, ActivityLog } from '@/types/ml-project';
 
+const ALL_PHASES: PipelinePhase[] = [
+  'problem_understanding', 
+  'data_collection', 
+  'model_training', 
+  'optimization',
+  'evaluation', 
+  'deployment'
+];
+
 const createPipelineSteps = (statuses: Record<PipelinePhase, 'pending' | 'in_progress' | 'completed' | 'error'>) => {
-  const phases: PipelinePhase[] = ['problem_understanding', 'data_collection', 'model_training', 'evaluation', 'deployment'];
-  return phases.map((phase, index) => ({
-    id: `step-${index}`,
+  return ALL_PHASES.map((phase, index) => ({
+    id: `step-${phase}`,
     phase,
     status: statuses[phase],
     description: statuses[phase] !== 'pending' ? `Descrizione della fase ${phase.replace('_', ' ')}` : undefined,
