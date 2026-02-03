@@ -379,6 +379,7 @@ export default function ProjectDetail() {
                     return (
                       <PhaseDetailPanel
                         step={selectedStep}
+                        projectId={id || ''}
                         onUpdateDescription={(desc) => handleUpdateDescription(selectedPhaseId, desc)}
                         onAddLink={(link) => handleAddLink(selectedPhaseId, link)}
                         onRemoveLink={(linkId) => handleRemoveLink(selectedPhaseId, linkId)}
