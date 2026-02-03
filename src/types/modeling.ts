@@ -19,6 +19,80 @@ export interface ProductionConfig {
   selectedEvaluationRunId?: string;
   versions: ProductionVersion[];
   activeVersionId?: string;
+  selectedOptimizationId?: string; // Link to selected optimization from optimization phase
+}
+
+// Optimization Types
+export interface ActionableVariable {
+  id: string;
+  name: string;
+  description: string;
+  dataType: 'number' | 'percentage' | 'boolean' | 'category';
+  minValue?: number;
+  maxValue?: number;
+  stepSize?: number;
+  categories?: string[];
+  enabled: boolean;
+}
+
+export interface OptimizationVariable {
+  id: string;
+  name: string;
+  description: string;
+  targetType: 'maximize' | 'minimize' | 'target';
+  targetValue?: number;
+  weight: number;
+  unit?: string;
+}
+
+export interface ObjectiveFunction {
+  id: string;
+  name: string;
+  formula: string;
+  description: string;
+  type: 'maximize' | 'minimize';
+}
+
+export interface Constraint {
+  id: string;
+  name: string;
+  formula: string;
+  operator: '<' | '<=' | '=' | '>=' | '>';
+  value: number;
+  enabled: boolean;
+}
+
+export interface OptimizationKPI {
+  id: string;
+  name: string;
+  formula: string;
+  unit?: string;
+  targetValue?: number;
+}
+
+export interface OptimizationScenario {
+  id: string;
+  name: string;
+  description: string;
+  parameters: Record<string, number | string | boolean>;
+  results: Record<string, number>;
+  kpiValues: Record<string, number>;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  isFavorite: boolean;
+  createdAt: Date;
+  completedAt?: Date;
+}
+
+export interface OptimizationConfig {
+  productionVersionId?: string;
+  productionVersionName?: string;
+  actionableVariables: ActionableVariable[];
+  optimizationVariables: OptimizationVariable[];
+  objectiveFunctions: ObjectiveFunction[];
+  constraints: Constraint[];
+  kpis: OptimizationKPI[];
+  scenarios: OptimizationScenario[];
+  selectedScenarioId?: string;
 }
 
 export type AlgorithmFamily = 
