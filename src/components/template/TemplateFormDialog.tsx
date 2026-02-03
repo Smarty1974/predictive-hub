@@ -8,9 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
-import { useTemplates } from '@/hooks/useTemplates';
 import { useToast } from '@/hooks/use-toast';
-import { ProjectTemplate, TEMPLATE_CATEGORY_LABELS } from '@/types/template';
+import { ProjectTemplate, ProcessTemplate, TEMPLATE_CATEGORY_LABELS } from '@/types/template';
 import { PhaseType, PHASE_TYPE_LABELS, AVAILABLE_ICONS } from '@/types/process';
 import { cn } from '@/lib/utils';
 import { 
@@ -46,10 +45,22 @@ interface TemplateFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template?: ProjectTemplate | null;
+  onCreateTemplate: (data: {
+    name: string;
+    description: string;
+    category: ProjectTemplate['category'];
+    processes: Omit<ProcessTemplate, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>[];
+  }) => void;
+  onUpdateTemplate: (templateId: string, data: Partial<ProjectTemplate>) => void;
 }
 
-export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFormDialogProps) {
-  const { createTemplate, updateTemplate } = useTemplates();
+export function TemplateFormDialog({ 
+  open, 
+  onOpenChange, 
+  template,
+  onCreateTemplate,
+  onUpdateTemplate,
+}: TemplateFormDialogProps) {
   const { toast } = useToast();
   
   const [name, setName] = useState('');
@@ -126,7 +137,7 @@ export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFor
     }
 
     if (template) {
-      updateTemplate(template.id, {
+      onUpdateTemplate(template.id, {
         name,
         description,
         category,
@@ -140,7 +151,7 @@ export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFor
       });
       toast({ title: 'Template aggiornato' });
     } else {
-      createTemplate({ name, description, category, processes });
+      onCreateTemplate({ name, description, category, processes });
       toast({ title: 'Template creato', description: `"${name}" è ora disponibile.` });
     }
     

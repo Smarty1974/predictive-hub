@@ -30,7 +30,7 @@ const categoryColors: Record<ProjectTemplate['category'], string> = {
 };
 
 export default function Templates() {
-  const { templates, defaultTemplates, userTemplates, deleteTemplate, duplicateTemplate } = useTemplates();
+  const { templates, defaultTemplates, userTemplates, deleteTemplate, duplicateTemplate, createTemplate, updateTemplate } = useTemplates();
   const { toast } = useToast();
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ProjectTemplate | null>(null);
@@ -258,6 +258,8 @@ export default function Templates() {
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
         template={editingTemplate}
+        onCreateTemplate={createTemplate}
+        onUpdateTemplate={updateTemplate}
       />
     </MainLayout>
   );
