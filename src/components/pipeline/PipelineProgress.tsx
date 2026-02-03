@@ -24,19 +24,20 @@ export function PipelineProgress({ steps, compact = false }: PipelineProgressPro
         const isLast = index === steps.length - 1;
 
         return (
-          <div key={step.id} className="flex items-center flex-1 last:flex-none">
+          <div key={step.id} className="flex items-center flex-1 last:flex-none min-w-0">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div
                   className={cn(
-                    'pipeline-node',
+                    'shrink-0 rounded-full flex items-center justify-center',
+                    compact ? 'w-6 h-6' : 'w-8 h-8',
                     config.bgColor,
                     step.status === 'in_progress' && 'animate-glow-pulse'
                   )}
                 >
                   <Icon
                     className={cn(
-                      compact ? 'w-4 h-4' : 'w-5 h-5',
+                      compact ? 'w-3 h-3' : 'w-4 h-4',
                       config.color,
                       step.status === 'in_progress' && 'animate-spin'
                     )}
@@ -54,7 +55,7 @@ export function PipelineProgress({ steps, compact = false }: PipelineProgressPro
             {!isLast && (
               <div
                 className={cn(
-                  'pipeline-line',
+                  'flex-1 h-0.5 mx-1 min-w-1',
                   step.status === 'completed' ? 'bg-success' : 'bg-muted'
                 )}
               />
