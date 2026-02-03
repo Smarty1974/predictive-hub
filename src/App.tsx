@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { useAutoInitializeProjects } from "@/hooks/useAutoInitializeProjects";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -18,27 +19,36 @@ import Templates from "./pages/Templates";
 
 const queryClient = new QueryClient();
 
+function AppContent() {
+  // Auto-initialize projects with templates on first load
+  useAutoInitializeProjects();
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/:id" element={<ProjectDetail />} />
+        <Route path="/projects/:id/config" element={<ProjectConfig />} />
+        <Route path="/pipelines" element={<Pipelines />} />
+        <Route path="/teams" element={<Teams />} />
+        <Route path="/versions" element={<Versions />} />
+        <Route path="/data" element={<Data />} />
+        <Route path="/templates" element={<Templates />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/:id" element={<ProjectDetail />} />
-            <Route path="/projects/:id/config" element={<ProjectConfig />} />
-            <Route path="/pipelines" element={<Pipelines />} />
-            <Route path="/teams" element={<Teams />} />
-            <Route path="/versions" element={<Versions />} />
-            <Route path="/data" element={<Data />} />
-            <Route path="/templates" element={<Templates />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <AppContent />
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>

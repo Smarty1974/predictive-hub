@@ -141,7 +141,7 @@ export default function ProjectConfig() {
       return;
     }
 
-    initializeFromTemplate(template.processes);
+    initializeFromTemplate(template.processes, true); // Force overwrite existing processes
     
     toast({
       title: 'Template applicato',
