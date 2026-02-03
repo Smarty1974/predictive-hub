@@ -15,6 +15,7 @@ import { ProjectTemplate, TEMPLATE_CATEGORY_LABELS } from '@/types/template';
 import { PHASE_TYPE_LABELS } from '@/types/process';
 import { TemplateFormDialog } from '@/components/template/TemplateFormDialog';
 import { TemplateImportDialog } from '@/components/template/TemplateImportDialog';
+import { TemplateWorkflowPreview } from '@/components/template/TemplateWorkflowPreview';
 import { cn } from '@/lib/utils';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -305,9 +306,9 @@ export default function Templates() {
           </TabsContent>
         </Tabs>
 
-        {/* Preview Sheet */}
+        {/* Workflow Preview */}
         {previewTemplate && (
-          <TemplatePreviewSheet 
+          <TemplateWorkflowPreview 
             template={previewTemplate} 
             onClose={() => setPreviewTemplate(null)} 
           />
@@ -331,46 +332,3 @@ export default function Templates() {
   );
 }
 
-function TemplatePreviewSheet({ 
-  template, 
-  onClose 
-}: { 
-  template: ProjectTemplate; 
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" onClick={onClose}>
-      <div 
-        className="fixed right-0 top-0 h-full w-full max-w-lg bg-background border-l shadow-xl overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-6 space-y-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-bold">{template.name}</h2>
-              <p className="text-muted-foreground">{template.description}</p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>×</Button>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Processi Inclusi</h3>
-            {template.processes.map((process) => (
-              <Card key={process.id} className="p-4">
-                <h4 className="font-medium">{process.name}</h4>
-                <p className="text-sm text-muted-foreground mb-3">{process.description}</p>
-                <div className="flex flex-wrap gap-1">
-                  {process.enabledPhases.map((phase) => (
-                    <Badge key={phase} variant="secondary" className="text-xs">
-                      {PHASE_TYPE_LABELS[phase]}
-                    </Badge>
-                  ))}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
