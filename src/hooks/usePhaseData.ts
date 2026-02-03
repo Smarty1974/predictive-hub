@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { SelectedDatasetConfig } from '@/types/dataset';
+import { ModelingConfig, AlgorithmFamily, AlgorithmType, HyperParameter, getAlgorithmConfig } from '@/types/modeling';
 
 const STORAGE_KEY = 'ml-platform-phase-data';
 
@@ -9,6 +10,7 @@ interface PhaseDataConfig {
   dataCollectionConfig?: {
     selectedDatasets: SelectedDatasetConfig[];
   };
+  modelingConfig?: ModelingConfig;
 }
 
 export function usePhaseData(projectId: string) {
@@ -41,6 +43,7 @@ export function usePhaseData(projectId: string) {
     return phaseConfigs[key];
   }, [phaseConfigs]);
 
+  // Data Collection Config
   const updateDataCollectionConfig = useCallback((
     processId: string,
     selectedDatasets: SelectedDatasetConfig[]
@@ -49,6 +52,7 @@ export function usePhaseData(projectId: string) {
     const updated = {
       ...phaseConfigs,
       [key]: {
+        ...phaseConfigs[key],
         processId,
         phaseType: 'raccolta_dati',
         dataCollectionConfig: { selectedDatasets },
@@ -62,10 +66,81 @@ export function usePhaseData(projectId: string) {
     return config?.dataCollectionConfig?.selectedDatasets || [];
   }, [getPhaseConfig]);
 
+  // Modeling Config
+  const updateModelingConfig = useCallback((
+    processId: string,
+    modelingConfig: Partial<ModelingConfig>
+  ) => {
+    const key = getPhaseKey(processId, 'modellazione');
+    const existingConfig = phaseConfigs[key]?.modelingConfig;
+    
+    const updated = {
+      ...phaseConfigs,
+      [key]: {
+        ...phaseConfigs[key],
+        processId,
+        phaseType: 'modellazione',
+        modelingConfig: {
+          ...existingConfig,
+          ...modelingConfig,
+        } as ModelingConfig,
+      },
+    };
+    savePhaseConfigs(updated);
+  }, [phaseConfigs, savePhaseConfigs]);
+
+  const getModelingConfig = useCallback((processId: string): ModelingConfig | undefined => {
+    const config = getPhaseConfig(processId, 'modellazione');
+    return config?.modelingConfig;
+  }, [getPhaseConfig]);
+
+  const updateHyperParameter = useCallback((
+    processId: string,
+    paramName: string,
+    updates: Partial<HyperParameter>
+  ) => {
+    const config = getModelingConfig(processId);
+    if (!config) return;
+
+    const updatedParams = {
+      ...config.hyperParameters,
+      [paramName]: {
+        ...config.hyperParameters[paramName],
+        ...updates,
+      },
+    };
+
+    updateModelingConfig(processId, { hyperParameters: updatedParams });
+  }, [getModelingConfig, updateModelingConfig]);
+
+  const setAlgorithm = useCallback((
+    processId: string,
+    family: AlgorithmFamily,
+    type: AlgorithmType
+  ) => {
+    const algoConfig = getAlgorithmConfig(type);
+    if (!algoConfig) return;
+
+    const hyperParameters: Record<string, HyperParameter> = {};
+    algoConfig.hyperParameters.forEach(param => {
+      hyperParameters[param.name] = { ...param, currentValue: param.defaultValue };
+    });
+
+    updateModelingConfig(processId, {
+      algorithmFamily: family,
+      algorithmType: type,
+      hyperParameters,
+    });
+  }, [updateModelingConfig]);
+
   return {
     initialized,
     getPhaseConfig,
     updateDataCollectionConfig,
     getDataCollectionConfig,
+    updateModelingConfig,
+    getModelingConfig,
+    updateHyperParameter,
+    setAlgorithm,
   };
 }

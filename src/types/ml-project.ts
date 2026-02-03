@@ -147,7 +147,7 @@ export interface User {
 export const PHASE_LABELS: Record<PipelinePhase, string> = {
   problem_understanding: 'Comprensione Problema',
   data_collection: 'Raccolta Dati',
-  model_training: 'Addestramento',
+  model_training: 'Pipeline Modellazione',
   evaluation: 'Valutazione',
   deployment: 'Produzione',
 };
