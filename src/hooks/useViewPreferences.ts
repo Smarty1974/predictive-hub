@@ -12,6 +12,7 @@ export interface ViewPreferences {
   sortBy: string;
   statusFilter: string;
   groupFilter: string;
+  templateFilter: string;
   columns: ColumnConfig[];
 }
 
@@ -32,6 +33,7 @@ const DEFAULT_PREFERENCES: ViewPreferences = {
   sortBy: 'updated',
   statusFilter: 'all',
   groupFilter: 'all',
+  templateFilter: 'all',
   columns: DEFAULT_COLUMNS,
 };
 
