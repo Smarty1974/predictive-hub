@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Process, ProcessPhase, PhaseType, PhaseStatus } from '@/types/process';
+import { ProcessTemplate } from '@/types/template';
 
 const STORAGE_KEY = 'ml-platform-processes';
 
 const createDefaultPhase = (type: PhaseType, enabled: boolean): ProcessPhase => {
   const base = {
-    id: `phase-${type}-${Date.now()}`,
+    id: `phase-${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type,
     version: 1,
     status: 'da_avviare' as PhaseStatus,
@@ -42,6 +43,7 @@ const ALL_PHASE_TYPES: PhaseType[] = [
 
 export function useProcesses(projectId: string) {
   const [processes, setProcesses] = useState<Process[]>([]);
+  const [initialized, setInitialized] = useState(false);
 
   const storageKey = `${STORAGE_KEY}-${projectId}`;
 
@@ -63,6 +65,7 @@ export function useProcesses(projectId: string) {
         console.error('Failed to parse processes', e);
       }
     }
+    setInitialized(true);
   }, [storageKey]);
 
   const saveProcesses = useCallback((newProcesses: Process[]) => {
@@ -94,6 +97,44 @@ export function useProcesses(projectId: string) {
 
     saveProcesses([...processes, newProcess]);
     return newProcess;
+  }, [processes, saveProcesses]);
+
+  const initializeFromTemplate = useCallback((templateProcesses: ProcessTemplate[]) => {
+    // Only initialize if no processes exist yet
+    if (processes.length > 0) return;
+
+    // Create a mapping from template process IDs to new process IDs
+    const idMapping: Record<string, string> = {};
+    
+    const newProcesses: Process[] = templateProcesses.map((tp, index) => {
+      const newId = `process-${Date.now()}-${index}`;
+      idMapping[tp.id] = newId;
+      
+      const phases = ALL_PHASE_TYPES.map(type => 
+        createDefaultPhase(type, tp.enabledPhases.includes(type))
+      );
+
+      return {
+        id: newId,
+        name: tp.name,
+        description: tp.description,
+        icon: tp.icon,
+        previousProcessId: undefined, // Will be set in second pass
+        phases,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    });
+
+    // Second pass: update previousProcessId references
+    templateProcesses.forEach((tp, index) => {
+      if (tp.previousProcessId && idMapping[tp.previousProcessId]) {
+        newProcesses[index].previousProcessId = idMapping[tp.previousProcessId];
+      }
+    });
+
+    saveProcesses(newProcesses);
+    return newProcesses;
   }, [processes, saveProcesses]);
 
   const updateProcess = useCallback((processId: string, data: {
@@ -176,10 +217,12 @@ export function useProcesses(projectId: string) {
 
   return {
     processes,
+    initialized,
     createProcess,
     updateProcess,
     deleteProcess,
     togglePhase,
     updatePhaseStatus,
+    initializeFromTemplate,
   };
 }
