@@ -2,6 +2,7 @@ export type PipelinePhase =
   | 'problem_understanding'
   | 'data_collection'
   | 'model_training'
+  | 'optimization'
   | 'evaluation'
   | 'deployment';
 
@@ -148,6 +149,7 @@ export const PHASE_LABELS: Record<PipelinePhase, string> = {
   problem_understanding: 'Comprensione Problema',
   data_collection: 'Raccolta Dati',
   model_training: 'Pipeline Modellazione',
+  optimization: 'Pipeline Ottimizzazione',
   evaluation: 'Valutazione',
   deployment: 'Produzione',
 };

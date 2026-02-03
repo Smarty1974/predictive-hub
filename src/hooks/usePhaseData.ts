@@ -4,6 +4,8 @@ import {
   ModelingConfig, 
   EvaluationConfig,
   ProductionConfig,
+  OptimizationConfig,
+  ProductionVersion,
   AlgorithmFamily, 
   AlgorithmType, 
   HyperParameter, 
@@ -23,6 +25,7 @@ interface PhaseDataConfig {
   modelingConfig?: ModelingConfig;
   evaluationConfig?: EvaluationConfig;
   productionConfig?: ProductionConfig;
+  optimizationConfig?: OptimizationConfig;
 }
 
 export function usePhaseData(projectId: string) {
@@ -236,6 +239,46 @@ export function usePhaseData(projectId: string) {
     return config?.productionConfig;
   }, [getPhaseConfig]);
 
+  // Get all deployed production versions across the project
+  const getAllDeployedVersions = useCallback((): ProductionVersion[] => {
+    const allVersions: ProductionVersion[] = [];
+    Object.values(phaseConfigs).forEach(config => {
+      if (config.phaseType === 'produzione' && config.productionConfig?.versions) {
+        const deployed = config.productionConfig.versions.filter(v => v.status === 'deployed');
+        allVersions.push(...deployed);
+      }
+    });
+    return allVersions;
+  }, [phaseConfigs]);
+
+  // Optimization Config
+  const updateOptimizationConfig = useCallback((
+    processId: string,
+    optimizationConfig: Partial<OptimizationConfig>
+  ) => {
+    const key = getPhaseKey(processId, 'ottimizzazione');
+    const existingConfig = phaseConfigs[key]?.optimizationConfig;
+    
+    const updated = {
+      ...phaseConfigs,
+      [key]: {
+        ...phaseConfigs[key],
+        processId,
+        phaseType: 'ottimizzazione',
+        optimizationConfig: {
+          ...existingConfig,
+          ...optimizationConfig,
+        } as OptimizationConfig,
+      },
+    };
+    savePhaseConfigs(updated);
+  }, [phaseConfigs, savePhaseConfigs]);
+
+  const getOptimizationConfig = useCallback((processId: string): OptimizationConfig | undefined => {
+    const config = getPhaseConfig(processId, 'ottimizzazione');
+    return config?.optimizationConfig;
+  }, [getPhaseConfig]);
+
   return {
     initialized,
     getPhaseConfig,
@@ -252,5 +295,8 @@ export function usePhaseData(projectId: string) {
     getProductionSelectedEvaluation,
     updateProductionConfig,
     getProductionConfig,
+    getAllDeployedVersions,
+    updateOptimizationConfig,
+    getOptimizationConfig,
   };
 }
