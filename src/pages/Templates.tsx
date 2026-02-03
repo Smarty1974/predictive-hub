@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Plus, Copy, Trash2, Edit2, FileBox, Brain, Database, 
-  FileText, Cpu, Zap, Layers, BarChart, Eye, Lock
+  FileText, Cpu, Zap, Layers, BarChart, Eye, Lock, Download, Upload
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ProjectTemplate, TEMPLATE_CATEGORY_LABELS } from '@/types/template';
 import { PHASE_TYPE_LABELS } from '@/types/process';
 import { TemplateFormDialog } from '@/components/template/TemplateFormDialog';
+import { TemplateImportDialog } from '@/components/template/TemplateImportDialog';
 import { cn } from '@/lib/utils';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -33,8 +34,52 @@ export default function Templates() {
   const { templates, defaultTemplates, userTemplates, deleteTemplate, duplicateTemplate, createTemplate, updateTemplate } = useTemplates();
   const { toast } = useToast();
   const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ProjectTemplate | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<ProjectTemplate | null>(null);
+
+  const handleExport = (template: ProjectTemplate) => {
+    const exportData = {
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      processes: template.processes.map(p => ({
+        name: p.name,
+        description: p.description,
+        icon: p.icon,
+        enabledPhases: p.enabledPhases,
+        previousProcessId: p.previousProcessId,
+      })),
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `template-${template.name.toLowerCase().replace(/\s+/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: 'Template esportato',
+      description: `"${template.name}" è stato scaricato come JSON.`,
+    });
+  };
+
+  const handleImport = (data: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'isDefault'>) => {
+    createTemplate({
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      processes: data.processes,
+    });
+    toast({
+      title: 'Template importato',
+      description: `"${data.name}" è stato aggiunto ai tuoi template.`,
+    });
+  };
 
   const handleDuplicate = (template: ProjectTemplate) => {
     const dup = duplicateTemplate(template.id);
@@ -142,7 +187,16 @@ export default function Templates() {
             <Button 
               variant="outline" 
               size="sm"
+              onClick={() => handleExport(template)}
+              title="Esporta JSON"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
               onClick={() => handleDuplicate(template)}
+              title="Duplica"
             >
               <Copy className="w-4 h-4" />
             </Button>
@@ -181,10 +235,16 @@ export default function Templates() {
               Gestisci i template per creare nuovi progetti rapidamente
             </p>
           </div>
-          <Button onClick={handleCreate} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Nuovo Template
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">
+              <Upload className="w-4 h-4" />
+              Importa
+            </Button>
+            <Button onClick={handleCreate} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Nuovo Template
+            </Button>
+          </div>
         </div>
 
         {/* Info */}
@@ -260,6 +320,12 @@ export default function Templates() {
         template={editingTemplate}
         onCreateTemplate={createTemplate}
         onUpdateTemplate={updateTemplate}
+      />
+
+      <TemplateImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleImport}
       />
     </MainLayout>
   );
