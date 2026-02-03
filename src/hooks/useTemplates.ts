@@ -28,6 +28,28 @@ const DEFAULT_TEMPLATES: ProjectTemplate[] = [
     createdBy: 'system',
   },
   {
+    id: 'template-regression',
+    name: 'Regressione Standard',
+    description: 'Template per progetti di regressione e previsione numerica',
+    category: 'regression',
+    isDefault: true,
+    processes: [
+      {
+        id: 'process-regression',
+        name: 'Pipeline Regressione',
+        description: 'Processo di regressione con ottimizzazione',
+        icon: 'TrendingUp',
+        enabledPhases: ['comprensione_problema', 'raccolta_dati', 'modellazione', 'ottimizzazione', 'valutazione', 'produzione'],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      },
+    ],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    createdBy: 'system',
+  },
+  {
     id: 'template-nlp',
     name: 'NLP Pipeline',
     description: 'Template per progetti di Natural Language Processing',
@@ -40,6 +62,50 @@ const DEFAULT_TEMPLATES: ProjectTemplate[] = [
         description: 'Pipeline NLP con preprocessing e modellazione',
         icon: 'FileText',
         enabledPhases: ['comprensione_problema', 'raccolta_dati', 'modellazione', 'ottimizzazione', 'valutazione', 'produzione'],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      },
+    ],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    createdBy: 'system',
+  },
+  {
+    id: 'template-computer-vision',
+    name: 'Computer Vision',
+    description: 'Template per progetti di visione artificiale e image classification',
+    category: 'computer_vision',
+    isDefault: true,
+    processes: [
+      {
+        id: 'process-cv',
+        name: 'Pipeline Immagini',
+        description: 'Elaborazione e classificazione immagini',
+        icon: 'Image',
+        enabledPhases: ['comprensione_problema', 'raccolta_dati', 'modellazione', 'ottimizzazione', 'valutazione', 'produzione'],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      },
+    ],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    createdBy: 'system',
+  },
+  {
+    id: 'template-time-series',
+    name: 'Serie Temporali',
+    description: 'Template per progetti di forecasting e analisi temporale',
+    category: 'time_series',
+    isDefault: true,
+    processes: [
+      {
+        id: 'process-ts',
+        name: 'Pipeline Temporale',
+        description: 'Analisi e previsione serie temporali',
+        icon: 'Clock',
+        enabledPhases: ['comprensione_problema', 'raccolta_dati', 'modellazione', 'ottimizzazione', 'valutazione', 'realtime', 'produzione'],
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: 'system',
@@ -83,6 +149,41 @@ const DEFAULT_TEMPLATES: ProjectTemplate[] = [
     createdBy: 'system',
   },
 ];
+
+// Map algorithm types to template categories
+export const ALGORITHM_TO_TEMPLATE: Record<string, string> = {
+  // Classification algorithms
+  'neural_network': 'template-classification',
+  'random_forest': 'template-classification',
+  'svm': 'template-classification',
+  'logistic_regression': 'template-classification',
+  'gradient_boosting': 'template-classification',
+  'decision_tree': 'template-classification',
+  
+  // Regression algorithms
+  'linear_regression': 'template-regression',
+  'ridge': 'template-regression',
+  'lasso': 'template-regression',
+  'elastic_net': 'template-regression',
+  
+  // NLP algorithms
+  'transformer': 'template-nlp',
+  'bert': 'template-nlp',
+  'gpt': 'template-nlp',
+  'lstm_text': 'template-nlp',
+  
+  // Computer Vision algorithms
+  'cnn': 'template-computer-vision',
+  'resnet': 'template-computer-vision',
+  'vgg': 'template-computer-vision',
+  'yolo': 'template-computer-vision',
+  
+  // Time Series algorithms
+  'rnn': 'template-time-series',
+  'lstm': 'template-time-series',
+  'arima': 'template-time-series',
+  'prophet': 'template-time-series',
+};
 
 export function useTemplates() {
   const [templates, setTemplates] = useState<ProjectTemplate[]>([]);

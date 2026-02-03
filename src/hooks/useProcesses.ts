@@ -99,9 +99,9 @@ export function useProcesses(projectId: string) {
     return newProcess;
   }, [processes, saveProcesses]);
 
-  const initializeFromTemplate = useCallback((templateProcesses: ProcessTemplate[]) => {
-    // Only initialize if no processes exist yet
-    if (processes.length > 0) return;
+  const initializeFromTemplate = useCallback((templateProcesses: ProcessTemplate[], force: boolean = false) => {
+    // Only initialize if no processes exist yet (unless force is true)
+    if (processes.length > 0 && !force) return;
 
     // Create a mapping from template process IDs to new process IDs
     const idMapping: Record<string, string> = {};
