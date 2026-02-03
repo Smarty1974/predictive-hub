@@ -1,6 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { SelectedDatasetConfig } from '@/types/dataset';
-import { ModelingConfig, AlgorithmFamily, AlgorithmType, HyperParameter, getAlgorithmConfig } from '@/types/modeling';
+import { 
+  ModelingConfig, 
+  EvaluationConfig,
+  AlgorithmFamily, 
+  AlgorithmType, 
+  HyperParameter, 
+  TrainingRun,
+  getAlgorithmConfig 
+} from '@/types/modeling';
 
 const STORAGE_KEY = 'ml-platform-phase-data';
 
@@ -11,6 +19,7 @@ interface PhaseDataConfig {
     selectedDatasets: SelectedDatasetConfig[];
   };
   modelingConfig?: ModelingConfig;
+  evaluationConfig?: EvaluationConfig;
 }
 
 export function usePhaseData(projectId: string) {
@@ -144,6 +153,45 @@ export function usePhaseData(projectId: string) {
     });
   }, [updateModelingConfig]);
 
+  // Get ALL training runs across the project (for evaluation phase)
+  const getAllTrainingRuns = useCallback((): TrainingRun[] => {
+    const allRuns: TrainingRun[] = [];
+    Object.values(phaseConfigs).forEach(config => {
+      if (config.phaseType === 'modellazione' && config.modelingConfig?.trainingRuns) {
+        allRuns.push(...config.modelingConfig.trainingRuns);
+      }
+    });
+    return allRuns;
+  }, [phaseConfigs]);
+
+  // Evaluation Config
+  const updateEvaluationConfig = useCallback((
+    processId: string,
+    evaluationConfig: Partial<EvaluationConfig>
+  ) => {
+    const key = getPhaseKey(processId, 'valutazione');
+    const existingConfig = phaseConfigs[key]?.evaluationConfig;
+    
+    const updated = {
+      ...phaseConfigs,
+      [key]: {
+        ...phaseConfigs[key],
+        processId,
+        phaseType: 'valutazione',
+        evaluationConfig: {
+          ...existingConfig,
+          ...evaluationConfig,
+        } as EvaluationConfig,
+      },
+    };
+    savePhaseConfigs(updated);
+  }, [phaseConfigs, savePhaseConfigs]);
+
+  const getEvaluationConfig = useCallback((processId: string): EvaluationConfig | undefined => {
+    const config = getPhaseConfig(processId, 'valutazione');
+    return config?.evaluationConfig;
+  }, [getPhaseConfig]);
+
   return {
     initialized,
     getPhaseConfig,
@@ -154,5 +202,8 @@ export function usePhaseData(projectId: string) {
     getModelingConfig,
     updateHyperParameter,
     setAlgorithm,
+    getAllTrainingRuns,
+    updateEvaluationConfig,
+    getEvaluationConfig,
   };
 }
