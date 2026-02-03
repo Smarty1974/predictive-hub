@@ -1,3 +1,26 @@
+// Production Types
+export interface ProductionVersion {
+  id: string;
+  versionNumber: number;
+  name: string;
+  description: string;
+  evaluationRunId: string;
+  evaluationRunName: string;
+  algorithmType: AlgorithmType;
+  metrics: EvaluationMetrics;
+  status: 'draft' | 'testing' | 'deployed' | 'archived';
+  createdAt: Date;
+  createdBy: string;
+  deployedAt?: Date;
+  config?: Record<string, unknown>;
+}
+
+export interface ProductionConfig {
+  selectedEvaluationRunId?: string;
+  versions: ProductionVersion[];
+  activeVersionId?: string;
+}
+
 export type AlgorithmFamily = 
   | 'tree_based'
   | 'linear'
