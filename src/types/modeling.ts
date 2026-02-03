@@ -70,14 +70,38 @@ export interface AlgorithmConfig {
   isRegressor?: boolean;
 }
 
-export interface ModelingConfig {
-  selectedDatasetId?: string;
-  datasetName?: string;
-  trainTestSplit: number;
-  randomState?: number;
+export interface TrainingRun {
+  id: string;
+  name: string;
   algorithmFamily: AlgorithmFamily;
   algorithmType: AlgorithmType;
   hyperParameters: Record<string, HyperParameter>;
+  selectedDatasetIds: string[];
+  trainTestSplit: number;
+  randomState: number;
+  crossValidationFolds: number;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  isFavorite: boolean;
+  createdAt: Date;
+  completedAt?: Date;
+  metrics?: {
+    accuracy?: number;
+    precision?: number;
+    recall?: number;
+    f1Score?: number;
+    loss?: number;
+  };
+}
+
+export interface ModelingConfig {
+  selectedDatasetIds: string[];
+  trainTestSplit: number;
+  randomState: number;
+  crossValidationFolds: number;
+  algorithmFamily: AlgorithmFamily;
+  algorithmType: AlgorithmType;
+  hyperParameters: Record<string, HyperParameter>;
+  trainingRuns: TrainingRun[];
 }
 
 export const ALGORITHM_FAMILY_LABELS: Record<AlgorithmFamily, string> = {

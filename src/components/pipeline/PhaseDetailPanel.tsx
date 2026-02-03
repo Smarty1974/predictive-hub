@@ -70,6 +70,7 @@ export function PhaseDetailPanel({
   const { 
     getDataCollectionConfig, 
     updateDataCollectionConfig,
+    getAllDataCollectionConfigs,
     getModelingConfig,
     updateModelingConfig,
     updateHyperParameter,
@@ -79,8 +80,8 @@ export function PhaseDetailPanel({
   const isDataCollectionPhase = step.phase === 'data_collection';
   const isModelingPhase = step.phase === 'model_training';
   
-  // Get data from data collection phase for modeling
-  const dataCollectionDatasets = getDataCollectionConfig(step.id);
+  // Get data from data collection phase for modeling - use ALL datasets across project
+  const allDataCollectionDatasets = getAllDataCollectionConfigs();
   const modelingConfig = getModelingConfig(step.id);
   
   // New link form state
@@ -170,7 +171,7 @@ export function PhaseDetailPanel({
               <ModelingPanel
                 processId={step.id}
                 modelingConfig={modelingConfig}
-                availableDatasets={dataCollectionDatasets}
+                availableDatasets={allDataCollectionDatasets}
                 onUpdateConfig={(config) => updateModelingConfig(step.id, config)}
                 onSetAlgorithm={(family, type) => setAlgorithm(step.id, family, type)}
                 onUpdateHyperParameter={(name, updates) => updateHyperParameter(step.id, name, updates)}

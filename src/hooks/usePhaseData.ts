@@ -66,6 +66,17 @@ export function usePhaseData(projectId: string) {
     return config?.dataCollectionConfig?.selectedDatasets || [];
   }, [getPhaseConfig]);
 
+  // Get ALL data collection configs across the project (for modeling phase)
+  const getAllDataCollectionConfigs = useCallback((): SelectedDatasetConfig[] => {
+    const allDatasets: SelectedDatasetConfig[] = [];
+    Object.values(phaseConfigs).forEach(config => {
+      if (config.phaseType === 'raccolta_dati' && config.dataCollectionConfig?.selectedDatasets) {
+        allDatasets.push(...config.dataCollectionConfig.selectedDatasets);
+      }
+    });
+    return allDatasets;
+  }, [phaseConfigs]);
+
   // Modeling Config
   const updateModelingConfig = useCallback((
     processId: string,
@@ -138,6 +149,7 @@ export function usePhaseData(projectId: string) {
     getPhaseConfig,
     updateDataCollectionConfig,
     getDataCollectionConfig,
+    getAllDataCollectionConfigs,
     updateModelingConfig,
     getModelingConfig,
     updateHyperParameter,
