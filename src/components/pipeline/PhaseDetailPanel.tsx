@@ -123,7 +123,26 @@ export function PhaseDetailPanel({
         </Badge>
       </div>
 
-      <Accordion type="multiple" defaultValue={['description', 'links', 'logs', 'data-collection']} className="space-y-2">
+      <Accordion type="multiple" defaultValue={['data-collection', 'description', 'links', 'logs']} className="space-y-2">
+        {/* Data Collection Section - FIRST for data_collection phase */}
+        {isDataCollectionPhase && (
+          <AccordionItem value="data-collection" className="border-none">
+            <AccordionTrigger className="glass-card px-4 py-3 hover:no-underline rounded-lg bg-primary/5 border-2 border-primary/20">
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-primary" />
+                <span className="font-medium text-primary">Configurazione Dati</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-3">
+              <DataCollectionPanel
+                projectId={projectId}
+                selectedDatasets={getDataCollectionConfig(step.id)}
+                onUpdateDatasets={(datasets) => updateDataCollectionConfig(step.id, datasets)}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
         {/* Description Section */}
         <AccordionItem value="description" className="border-none">
           <AccordionTrigger className="glass-card px-4 py-3 hover:no-underline rounded-lg">
@@ -395,25 +414,6 @@ export function PhaseDetailPanel({
             </div>
           </AccordionContent>
         </AccordionItem>
-
-        {/* Data Collection Section - Only for data_collection phase */}
-        {isDataCollectionPhase && (
-          <AccordionItem value="data-collection" className="border-none">
-            <AccordionTrigger className="glass-card px-4 py-3 hover:no-underline rounded-lg">
-              <div className="flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-primary" />
-                <span className="font-medium">Configurazione Dati</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pt-3">
-              <DataCollectionPanel
-                projectId={projectId}
-                selectedDatasets={getDataCollectionConfig(step.id)}
-                onUpdateDatasets={(datasets) => updateDataCollectionConfig(step.id, datasets)}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        )}
       </Accordion>
     </div>
   );
