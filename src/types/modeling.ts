@@ -104,6 +104,42 @@ export interface ModelingConfig {
   trainingRuns: TrainingRun[];
 }
 
+// Evaluation types
+export interface EvaluationRun {
+  id: string;
+  trainingRunId: string;
+  trainingRunName: string;
+  algorithmType: AlgorithmType;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  isSelectedForProduction: boolean;
+  evaluatedAt?: Date;
+  metrics: EvaluationMetrics;
+  confusionMatrix?: number[][];
+  rocCurve?: { fpr: number; tpr: number; threshold: number }[];
+  featureImportance?: { feature: string; importance: number }[];
+}
+
+export interface EvaluationMetrics {
+  accuracy: number;
+  precision: number;
+  recall: number;
+  f1Score: number;
+  auc?: number;
+  mse?: number;
+  rmse?: number;
+  mae?: number;
+  r2?: number;
+  logLoss?: number;
+}
+
+export interface EvaluationConfig {
+  selectedTrainingRunIds: string[];
+  evaluationRuns: EvaluationRun[];
+  productionModelId?: string;
+  testDatasetId?: string;
+  evaluationMetrics: (keyof EvaluationMetrics)[];
+}
+
 export const ALGORITHM_FAMILY_LABELS: Record<AlgorithmFamily, string> = {
   tree_based: 'Tree Based',
   linear: 'Linear',
