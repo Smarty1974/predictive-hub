@@ -3,7 +3,7 @@ import {
   Brain, Database, Cog, Zap, Activity, Target, Rocket, GitBranch, 
   Layers, Box, Cpu, BarChart, LineChart, PieChart, Network, Workflow,
   Sparkles, Lightbulb, Gauge, Shield, ChevronDown, ChevronUp, Edit2, Trash2, Link2,
-  Settings2
+  Settings2, FileSpreadsheet
 } from 'lucide-react';
 import { Process, PHASE_TYPE_LABELS, PHASE_STATUS_LABELS, PHASE_STATUS_COLORS, PhaseType } from '@/types/process';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -120,14 +120,18 @@ export function ProcessCard({ process, previousProcess, projectId, onEdit, onDel
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {phase.enabled && phase.type === 'raccolta_dati' && (
+                      {phase.enabled && phase.type === 'raccolta_dati' && (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleOpenPhaseConfig(phase.type)}
+                            className="bg-primary/10 hover:bg-primary/20 border-primary/30"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenPhaseConfig(phase.type);
+                            }}
                           >
                             <Settings2 className="w-4 h-4 mr-1" />
-                            Configura
+                            Configura Dati
                           </Button>
                         )}
                         <Badge className={cn("text-xs", PHASE_STATUS_COLORS[phase.status])}>
@@ -143,17 +147,25 @@ export function ProcessCard({ process, previousProcess, projectId, onEdit, onDel
         </Collapsible>
       </Card>
 
-      {/* Data Collection Dialog */}
+      {/* Data Collection Dialog - Full Feature Panel */}
       <Dialog open={dataCollectionDialogOpen} onOpenChange={setDataCollectionDialogOpen}>
-        <DialogContent className="glass-card border-glass-border sm:max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Configurazione Raccolta Dati - {process.name}</DialogTitle>
+        <DialogContent className="glass-card border-glass-border w-[95vw] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5 text-primary" />
+              Configurazione Raccolta Dati - {process.name}
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Seleziona dataset, modifica i formati, aggiungi trasformazioni e merge tra file
+            </p>
           </DialogHeader>
-          <DataCollectionPanel
-            projectId={projectId}
-            selectedDatasets={getDataCollectionConfig(process.id)}
-            onUpdateDatasets={(datasets) => updateDataCollectionConfig(process.id, datasets)}
-          />
+          <div className="flex-1 overflow-y-auto min-h-0 py-4">
+            <DataCollectionPanel
+              projectId={projectId}
+              selectedDatasets={getDataCollectionConfig(process.id)}
+              onUpdateDatasets={(datasets) => updateDataCollectionConfig(process.id, datasets)}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </>
