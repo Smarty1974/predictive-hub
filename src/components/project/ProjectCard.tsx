@@ -1,4 +1,4 @@
-import { Calendar, GitBranch, MoreVertical, Users } from 'lucide-react';
+import { Calendar, GitBranch, MoreVertical, Users, FileBox } from 'lucide-react';
 import { MLProject, ENGINE_LABELS, ALGORITHM_LABELS } from '@/types/ml-project';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { mockGroups } from '@/data/mock-data';
+import { ALGORITHM_TO_TEMPLATE } from '@/hooks/useTemplates';
+
+// Template names mapping
+const TEMPLATE_NAMES: Record<string, string> = {
+  'template-classification': 'Classificazione',
+  'template-regression': 'Regressione',
+  'template-nlp': 'NLP',
+  'template-computer-vision': 'Computer Vision',
+  'template-time-series': 'Serie Temporali',
+  'template-realtime': 'Realtime',
+};
 
 interface ProjectCardProps {
   project: MLProject;
@@ -35,6 +46,8 @@ const statusLabels = {
 
 export function ProjectCard({ project, onClick, className }: ProjectCardProps) {
   const group = mockGroups.find((g) => g.id === project.groupId);
+  const templateId = ALGORITHM_TO_TEMPLATE[project.algorithm];
+  const templateName = templateId ? TEMPLATE_NAMES[templateId] : null;
 
   return (
     <div
@@ -71,10 +84,16 @@ export function ProjectCard({ project, onClick, className }: ProjectCardProps) {
         </DropdownMenu>
       </div>
 
-      {/* Tech Stack */}
+      {/* Tech Stack & Template */}
       <div className="flex flex-wrap gap-2 mb-4">
         <Badge variant="glass">{ENGINE_LABELS[project.engine]}</Badge>
         <Badge variant="glass">{ALGORITHM_LABELS[project.algorithm]}</Badge>
+        {templateName && (
+          <Badge variant="outline" className="bg-primary/5 border-primary/30 text-primary">
+            <FileBox className="w-3 h-3 mr-1" />
+            {templateName}
+          </Badge>
+        )}
       </div>
 
       {/* Pipeline Progress */}
