@@ -1,15 +1,22 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Settings, Workflow, Info } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Workflow, Info, Save } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProcessCard } from '@/components/config/ProcessCard';
 import { ProcessFormDialog } from '@/components/config/ProcessFormDialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProcesses } from '@/hooks/useProcesses';
+import { useTemplates } from '@/hooks/useTemplates';
 import { useToast } from '@/hooks/use-toast';
 import { mockProjects } from '@/data/mock-data';
 import { Process, PhaseType } from '@/types/process';
+import { ProjectTemplate, TEMPLATE_CATEGORY_LABELS } from '@/types/template';
 
 export default function ProjectConfig() {
   const { id } = useParams();
@@ -18,9 +25,16 @@ export default function ProjectConfig() {
   
   const project = mockProjects.find((p) => p.id === id);
   const { processes, createProcess, updateProcess, deleteProcess, togglePhase } = useProcesses(id || '');
+  const { saveAsTemplate } = useTemplates();
   
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingProcess, setEditingProcess] = useState<Process | null>(null);
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
+  const [templateData, setTemplateData] = useState({
+    name: '',
+    description: '',
+    category: 'custom' as ProjectTemplate['category'],
+  });
 
   if (!project) {
     return (
@@ -76,6 +90,40 @@ export default function ProjectConfig() {
     togglePhase(processId, phaseType, enabled);
   };
 
+  const handleSaveAsTemplate = () => {
+    if (!templateData.name.trim()) {
+      toast({
+        title: 'Errore',
+        description: 'Inserisci un nome per il template.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const processTemplates = processes.map(p => ({
+      name: p.name,
+      description: p.description,
+      icon: p.icon,
+      enabledPhases: p.phases.filter(ph => ph.enabled).map(ph => ph.type),
+      previousProcessId: p.previousProcessId,
+    }));
+
+    saveAsTemplate(
+      templateData.name,
+      templateData.description,
+      templateData.category,
+      processTemplates as any
+    );
+
+    toast({
+      title: 'Template salvato',
+      description: `La configurazione è stata salvata come template "${templateData.name}".`,
+    });
+
+    setSaveTemplateDialogOpen(false);
+    setTemplateData({ name: '', description: '', category: 'custom' });
+  };
+
   // Sort processes by dependency chain
   const sortedProcesses = [...processes].sort((a, b) => {
     if (a.previousProcessId === b.id) return 1;
@@ -98,10 +146,22 @@ export default function ProjectConfig() {
             </div>
             <p className="text-muted-foreground">{project.name}</p>
           </div>
-          <Button onClick={handleCreateProcess} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Nuovo Processo
-          </Button>
+          <div className="flex items-center gap-2">
+            {processes.length > 0 && (
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => setSaveTemplateDialogOpen(true)}
+              >
+                <Save className="w-4 h-4" />
+                Salva come Template
+              </Button>
+            )}
+            <Button onClick={handleCreateProcess} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Nuovo Processo
+            </Button>
+          </div>
         </div>
 
         {/* Info Alert */}
@@ -172,6 +232,75 @@ export default function ProjectConfig() {
         existingProcesses={processes}
         onSave={handleSaveProcess}
       />
+
+      {/* Save as Template Dialog */}
+      <Dialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
+        <DialogContent className="glass-card border-glass-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Salva come Template</DialogTitle>
+            <DialogDescription>
+              Salva la configurazione attuale come template riutilizzabile per altri progetti.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Nome Template</Label>
+              <Input
+                id="template-name"
+                placeholder="Es. Pipeline Classificazione Avanzata"
+                value={templateData.name}
+                onChange={(e) => setTemplateData({ ...templateData, name: e.target.value })}
+                className="bg-muted/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-description">Descrizione</Label>
+              <Textarea
+                id="template-description"
+                placeholder="Descrivi lo scopo del template..."
+                value={templateData.description}
+                onChange={(e) => setTemplateData({ ...templateData, description: e.target.value })}
+                className="bg-muted/50"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select
+                value={templateData.category}
+                onValueChange={(value) => setTemplateData({ ...templateData, category: value as ProjectTemplate['category'] })}
+              >
+                <SelectTrigger className="bg-muted/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="glass-card">
+                  {Object.entries(TEMPLATE_CATEGORY_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="p-3 rounded-lg bg-muted/30 text-sm">
+              <p className="font-medium mb-1">Contenuto del template:</p>
+              <p className="text-muted-foreground">
+                {processes.length} processo/i con {processes.reduce((acc, p) => acc + p.phases.filter(ph => ph.enabled).length, 0)} fasi attive
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveTemplateDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleSaveAsTemplate}>
+              Salva Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

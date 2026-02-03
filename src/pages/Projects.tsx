@@ -15,6 +15,7 @@ import { mockProjects, mockGroups } from '@/data/mock-data';
 import { MLEngine, MLAlgorithm, ENGINE_LABELS, ALGORITHM_LABELS } from '@/types/ml-project';
 import { useToast } from '@/hooks/use-toast';
 import { useViewPreferences } from '@/hooks/useViewPreferences';
+import { useTemplates } from '@/hooks/useTemplates';
 import { cn } from '@/lib/utils';
 
 const statusVariants = {
@@ -64,7 +65,83 @@ export default function Projects() {
       });
   }, [preferences.statusFilter, preferences.groupFilter, preferences.sortBy]);
 
-  const handleCreateProject = (data: { name: string; description: string; engine: MLEngine; algorithm: MLAlgorithm; groupId: string }) => {
+  const { templates } = useTemplates();
+
+  const handleCreateProject = (data: { name: string; description: string; engine: MLEngine; algorithm: MLAlgorithm; groupId: string; templateId?: string }) => {
+    // Se è stato selezionato un template, salviamo i processi nel localStorage
+    if (data.templateId) {
+      const template = templates.find(t => t.id === data.templateId);
+      if (template) {
+        // Generiamo un ID per il nuovo progetto (in un'app reale verrebbe dal backend)
+        const newProjectId = `project-${Date.now()}`;
+        
+        // Salviamo i processi del template per questo progetto
+        const STORAGE_KEY = 'ml-platform-processes';
+        const storageKey = `${STORAGE_KEY}-${newProjectId}`;
+        
+        // Crea mapping degli ID
+        const idMapping: Record<string, string> = {};
+        const newProcesses = template.processes.map((tp, index) => {
+          const newId = `process-${Date.now()}-${index}`;
+          idMapping[tp.id] = newId;
+          
+          const ALL_PHASE_TYPES = [
+            'comprensione_problema',
+            'raccolta_dati',
+            'modellazione',
+            'ottimizzazione',
+            'realtime',
+            'valutazione',
+            'produzione',
+          ];
+          
+          const phases = ALL_PHASE_TYPES.map(type => ({
+            id: `phase-${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type,
+            version: 1,
+            status: 'da_avviare',
+            enabled: tp.enabledPhases.includes(type as any),
+            ...(type === 'comprensione_problema' ? { description: '', links: [], activityLogs: [] } : {}),
+            ...(type === 'raccolta_dati' ? { selectedDatasets: [], normalizationFormulas: [], additionalColumns: [] } : {}),
+            ...(type === 'modellazione' ? { modelConfig: {} } : {}),
+            ...(type === 'ottimizzazione' ? { optimizationConfig: {} } : {}),
+            ...(type === 'realtime' ? { realtimeConfig: {} } : {}),
+            ...(type === 'valutazione' ? { evaluationConfig: {} } : {}),
+            ...(type === 'produzione' ? { productionConfig: {} } : {}),
+          }));
+
+          return {
+            id: newId,
+            name: tp.name,
+            description: tp.description,
+            icon: tp.icon,
+            previousProcessId: undefined,
+            phases,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        });
+
+        // Aggiorna i riferimenti
+        template.processes.forEach((tp, index) => {
+          if (tp.previousProcessId && idMapping[tp.previousProcessId]) {
+            newProcesses[index].previousProcessId = idMapping[tp.previousProcessId];
+          }
+        });
+
+        localStorage.setItem(storageKey, JSON.stringify(newProcesses));
+        
+        toast({
+          title: 'Progetto creato con template',
+          description: `Il progetto "${data.name}" è stato creato con ${template.processes.length} processo/i dal template "${template.name}".`,
+        });
+        
+        // Navigate to the config page of the new project
+        navigate(`/projects/${newProjectId}/config`);
+        return;
+      }
+    }
+    
     toast({
       title: 'Progetto creato',
       description: `Il progetto "${data.name}" è stato creato con successo.`,
