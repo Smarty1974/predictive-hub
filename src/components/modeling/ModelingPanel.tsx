@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { 
   Brain, Database, Settings2, Info, RotateCcw, 
-  ChevronDown, Sliders, Play, Edit2
+  ChevronDown, Sliders, Play, Edit2, Star, StarOff,
+  Plus, Trash2, Check, Loader2, AlertCircle, Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -22,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Tooltip,
@@ -41,12 +44,14 @@ import {
   AlgorithmType,
   HyperParameter,
   ModelingConfig,
+  TrainingRun,
   ALGORITHM_FAMILY_LABELS,
   getAlgorithmsByFamily,
   getAlgorithmConfig,
 } from '@/types/modeling';
 import { SelectedDatasetConfig } from '@/types/dataset';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ModelingPanelProps {
   processId: string;
@@ -65,13 +70,17 @@ export function ModelingPanel({
   onSetAlgorithm,
   onUpdateHyperParameter,
 }: ModelingPanelProps) {
+  const { toast } = useToast();
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
+  const [isRunsDialogOpen, setIsRunsDialogOpen] = useState(false);
 
   const selectedFamily = modelingConfig?.algorithmFamily || 'tree_based';
   const selectedType = modelingConfig?.algorithmType;
   const hyperParameters = modelingConfig?.hyperParameters || {};
   const trainTestSplit = modelingConfig?.trainTestSplit || 80;
+  const selectedDatasetIds = modelingConfig?.selectedDatasetIds || [];
+  const trainingRuns = modelingConfig?.trainingRuns || [];
 
   const familyAlgorithms = getAlgorithmsByFamily(selectedFamily);
   const selectedAlgoConfig = selectedType ? getAlgorithmConfig(selectedType) : null;
@@ -98,9 +107,94 @@ export function ModelingPanel({
     }
   };
 
-  const selectedDataset = availableDatasets.find(
-    d => d.datasetId === modelingConfig?.selectedDatasetId
+  const handleToggleDataset = (datasetId: string, checked: boolean) => {
+    const newIds = checked
+      ? [...selectedDatasetIds, datasetId]
+      : selectedDatasetIds.filter(id => id !== datasetId);
+    onUpdateConfig({ selectedDatasetIds: newIds });
+  };
+
+  const handleStartTraining = () => {
+    if (selectedDatasetIds.length === 0) {
+      toast({
+        title: 'Nessun dataset selezionato',
+        description: 'Seleziona almeno un dataset per avviare il training.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!selectedType) {
+      toast({
+        title: 'Nessun algoritmo selezionato',
+        description: 'Seleziona un algoritmo prima di avviare il training.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const newRun: TrainingRun = {
+      id: `run-${Date.now()}`,
+      name: `${getAlgorithmConfig(selectedType)?.label || selectedType} - Run ${trainingRuns.length + 1}`,
+      algorithmFamily: selectedFamily,
+      algorithmType: selectedType,
+      hyperParameters: { ...hyperParameters },
+      selectedDatasetIds: [...selectedDatasetIds],
+      trainTestSplit,
+      randomState: modelingConfig?.randomState || 42,
+      crossValidationFolds: modelingConfig?.crossValidationFolds || 5,
+      status: 'running',
+      isFavorite: false,
+      createdAt: new Date(),
+    };
+
+    onUpdateConfig({ 
+      trainingRuns: [...trainingRuns, newRun] 
+    });
+
+    toast({
+      title: 'Training avviato',
+      description: `Run "${newRun.name}" in esecuzione...`,
+    });
+
+    // Simulate training completion after 3 seconds
+    setTimeout(() => {
+      const completedRun: TrainingRun = {
+        ...newRun,
+        status: 'completed',
+        completedAt: new Date(),
+        metrics: {
+          accuracy: 0.85 + Math.random() * 0.1,
+          precision: 0.82 + Math.random() * 0.1,
+          recall: 0.78 + Math.random() * 0.15,
+          f1Score: 0.80 + Math.random() * 0.12,
+        },
+      };
+      
+      onUpdateConfig({
+        trainingRuns: trainingRuns.map(r => r.id === newRun.id ? completedRun : r).concat(
+          trainingRuns.find(r => r.id === newRun.id) ? [] : [completedRun]
+        ),
+      });
+    }, 3000);
+  };
+
+  const handleToggleFavorite = (runId: string) => {
+    const updatedRuns = trainingRuns.map(run => 
+      run.id === runId ? { ...run, isFavorite: !run.isFavorite } : run
+    );
+    onUpdateConfig({ trainingRuns: updatedRuns });
+  };
+
+  const handleDeleteRun = (runId: string) => {
+    const updatedRuns = trainingRuns.filter(run => run.id !== runId);
+    onUpdateConfig({ trainingRuns: updatedRuns });
+  };
+
+  const selectedDatasets = availableDatasets.filter(d => 
+    selectedDatasetIds.includes(d.datasetId)
   );
+
+  const favoriteRuns = trainingRuns.filter(r => r.isFavorite);
 
   return (
     <div className="space-y-6">
@@ -225,9 +319,10 @@ export function ModelingPanel({
                   <Label>Cross Validation Folds</Label>
                   <Input 
                     type="number"
-                    defaultValue={5}
+                    value={modelingConfig?.crossValidationFolds || 5}
                     min={2}
                     max={10}
+                    onChange={(e) => onUpdateConfig({ crossValidationFolds: parseInt(e.target.value) })}
                     className="bg-background/50"
                   />
                 </div>
@@ -239,114 +334,242 @@ export function ModelingPanel({
 
       {/* Data Selection Section */}
       <div className="glass-card p-6 space-y-4">
-        <div className="flex items-center gap-2 border-b border-border pb-3">
-          <Database className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold uppercase tracking-wide">Select Data</h3>
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2">
+            <Database className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold uppercase tracking-wide">Select Data</h3>
+          </div>
+          {selectedDatasets.length > 0 && (
+            <Badge variant="secondary">{selectedDatasets.length} dataset selezionati</Badge>
+          )}
         </div>
 
-        {selectedDataset ? (
-          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Database className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{selectedDataset.datasetName}</p>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="w-4 h-4 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{selectedDataset.selectedColumns.length} colonne selezionate</p>
-                        <p>{selectedDataset.transformations.length} trasformazioni applicate</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+        {availableDatasets.length > 0 ? (
+          <div className="space-y-4">
+            {/* Dataset list with checkboxes */}
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {availableDatasets.map((dataset) => {
+                const isSelected = selectedDatasetIds.includes(dataset.datasetId);
+                return (
+                  <div
+                    key={dataset.datasetId}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer",
+                      isSelected
+                        ? "bg-primary/10 border-primary"
+                        : "bg-muted/30 border-border hover:border-primary/50"
+                    )}
+                    onClick={() => handleToggleDataset(dataset.datasetId, !isSelected)}
+                  >
+                    <Checkbox 
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleToggleDataset(dataset.datasetId, !!checked)}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Database className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">{dataset.datasetName}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {dataset.selectedColumns.length} colonne • {dataset.transformations.length} trasformazioni
+                      </p>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-primary" />}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Train/Test Split */}
+            <div className="space-y-3 pt-2">
+              <Label>Train/Test Split</Label>
+              <div className="flex items-center gap-4">
+                <Slider
+                  value={[trainTestSplit]}
+                  onValueChange={([v]) => onUpdateConfig({ trainTestSplit: v })}
+                  min={50}
+                  max={95}
+                  step={5}
+                  className="flex-1"
+                />
+                <div className="text-sm min-w-[100px]">
+                  <span className="text-primary font-medium">{trainTestSplit}%</span>
+                  <span className="text-muted-foreground"> Train</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Apply Random Split: {100 - trainTestSplit}% Testing, {trainTestSplit}% Training
-                </p>
               </div>
             </div>
-            <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="default" className="bg-primary hover:bg-primary/90">
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Configura Dataset</DialogTitle>
-                </DialogHeader>
-                <DataSelectionContent
-                  availableDatasets={availableDatasets}
-                  selectedDatasetId={modelingConfig?.selectedDatasetId}
-                  trainTestSplit={trainTestSplit}
-                  onSelectDataset={(id, name) => {
-                    onUpdateConfig({ selectedDatasetId: id, datasetName: name });
-                  }}
-                  onUpdateSplit={(split) => onUpdateConfig({ trainTestSplit: split })}
-                  onClose={() => setIsDataDialogOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-8">
-            {availableDatasets.length > 0 ? (
-              <>
-                <Database className="w-10 h-10 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground mb-4">Nessun dataset selezionato</p>
-                <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      Seleziona Dataset
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Seleziona Dataset</DialogTitle>
-                    </DialogHeader>
-                    <DataSelectionContent
-                      availableDatasets={availableDatasets}
-                      selectedDatasetId={modelingConfig?.selectedDatasetId}
-                      trainTestSplit={trainTestSplit}
-                      onSelectDataset={(id, name) => {
-                        onUpdateConfig({ selectedDatasetId: id, datasetName: name });
-                      }}
-                      onUpdateSplit={(split) => onUpdateConfig({ trainTestSplit: split })}
-                      onClose={() => setIsDataDialogOpen(false)}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </>
-            ) : (
-              <div className="text-center">
-                <Database className="w-10 h-10 text-muted-foreground/50 mb-3 mx-auto" />
-                <p className="text-muted-foreground">
-                  Nessun dataset disponibile dalla fase Raccolta Dati
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Configura prima la fase "Raccolta Dati" per selezionare i dataset
-                </p>
-              </div>
-            )}
+          <div className="text-center py-8">
+            <Database className="w-10 h-10 text-muted-foreground/50 mb-3 mx-auto" />
+            <p className="text-muted-foreground">
+              Nessun dataset disponibile dalla fase Raccolta Dati
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configura prima la fase "Raccolta Dati" per selezionare i dataset
+            </p>
           </div>
         )}
       </div>
 
-      {/* Run Training Button */}
-      {selectedType && selectedDataset && (
-        <div className="flex justify-end">
-          <Button variant="gradient" size="lg" className="gap-2">
-            <Play className="w-5 h-5" />
-            Avvia Training
-          </Button>
+      {/* Training Runs Section */}
+      {trainingRuns.length > 0 && (
+        <div className="glass-card p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex items-center gap-2">
+              <Play className="w-5 h-5 text-primary" />
+              <h3 className="text-lg font-semibold uppercase tracking-wide">Training Runs</h3>
+            </div>
+            <Badge variant="secondary">{trainingRuns.length} run</Badge>
+          </div>
+
+          <div className="space-y-3">
+            {trainingRuns.map((run) => (
+              <TrainingRunCard
+                key={run.id}
+                run={run}
+                onToggleFavorite={() => handleToggleFavorite(run.id)}
+                onDelete={() => handleDeleteRun(run.id)}
+              />
+            ))}
+          </div>
+
+          {favoriteRuns.length > 0 && (
+            <div className="pt-2 border-t border-border">
+              <p className="text-sm text-muted-foreground">
+                <Star className="w-4 h-4 inline-block mr-1 text-yellow-500" />
+                {favoriteRuns.length} modellazione/i preferita/e
+              </p>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Run Training Button */}
+      <div className="flex justify-end gap-3">
+        {trainingRuns.length > 0 && (
+          <Button variant="outline" onClick={() => setIsRunsDialogOpen(true)}>
+            Storico Training ({trainingRuns.length})
+          </Button>
+        )}
+        <Button 
+          variant="gradient" 
+          size="lg" 
+          className="gap-2"
+          onClick={handleStartTraining}
+          disabled={selectedDatasetIds.length === 0 || !selectedType}
+        >
+          <Play className="w-5 h-5" />
+          Avvia Training
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Training Run Card Component
+interface TrainingRunCardProps {
+  run: TrainingRun;
+  onToggleFavorite: () => void;
+  onDelete: () => void;
+}
+
+function TrainingRunCard({ run, onToggleFavorite, onDelete }: TrainingRunCardProps) {
+  const algoConfig = getAlgorithmConfig(run.algorithmType);
+  
+  const statusConfig: Record<TrainingRun['status'], { icon: typeof Clock; label: string; color: string; animate?: boolean }> = {
+    pending: { icon: Clock, label: 'In attesa', color: 'text-muted-foreground' },
+    running: { icon: Loader2, label: 'In esecuzione', color: 'text-primary', animate: true },
+    completed: { icon: Check, label: 'Completato', color: 'text-success' },
+    error: { icon: AlertCircle, label: 'Errore', color: 'text-destructive' },
+  };
+
+  const status = statusConfig[run.status];
+  const StatusIcon = status.icon;
+
+  return (
+    <div className={cn(
+      "p-4 rounded-lg border transition-all",
+      run.isFavorite ? "bg-warning/5 border-warning/30" : "bg-muted/30 border-border"
+    )}>
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium">{run.name}</h4>
+            <StatusIcon className={cn(
+              "w-4 h-4",
+              status.color,
+              status.animate && "animate-spin"
+            )} />
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {algoConfig?.label} • Split {run.trainTestSplit}%
+          </p>
+          
+          {run.status === 'completed' && run.metrics && (
+            <div className="flex gap-4 mt-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">Accuracy:</span>
+                <span className="ml-1 font-medium text-success">
+                  {(run.metrics.accuracy! * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">F1:</span>
+                <span className="ml-1 font-medium">
+                  {(run.metrics.f1Score! * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Precision:</span>
+                <span className="ml-1 font-medium">
+                  {(run.metrics.precision! * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleFavorite}
+                  className="h-8 w-8"
+                >
+                  {run.isFavorite ? (
+                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                  ) : (
+                    <StarOff className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {run.isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onDelete}
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Elimina run</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
     </div>
   );
 }
@@ -441,100 +664,6 @@ function HyperParameterRow({ param, onUpdate, onReset }: HyperParameterRowProps)
         <RotateCcw className="w-4 h-4 mr-1" />
         Reset
       </Button>
-    </div>
-  );
-}
-
-// Data Selection Dialog Content
-interface DataSelectionContentProps {
-  availableDatasets: SelectedDatasetConfig[];
-  selectedDatasetId?: string;
-  trainTestSplit: number;
-  onSelectDataset: (id: string, name: string) => void;
-  onUpdateSplit: (split: number) => void;
-  onClose: () => void;
-}
-
-function DataSelectionContent({
-  availableDatasets,
-  selectedDatasetId,
-  trainTestSplit,
-  onSelectDataset,
-  onUpdateSplit,
-  onClose,
-}: DataSelectionContentProps) {
-  const [localSplit, setLocalSplit] = useState(trainTestSplit);
-
-  return (
-    <div className="space-y-6 pt-4">
-      <div className="space-y-3">
-        <Label>Dataset dalla Raccolta Dati</Label>
-        <div className="space-y-2 max-h-[200px] overflow-y-auto">
-          {availableDatasets.map((dataset) => (
-            <button
-              key={dataset.datasetId}
-              onClick={() => onSelectDataset(dataset.datasetId, dataset.datasetName)}
-              className={cn(
-                "w-full p-3 rounded-lg border-2 text-left transition-all",
-                selectedDatasetId === dataset.datasetId
-                  ? "bg-primary/10 border-primary"
-                  : "bg-muted/30 border-border hover:border-primary/50"
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{dataset.datasetName}</span>
-                <Badge variant="secondary">
-                  {dataset.selectedColumns.length} colonne
-                </Badge>
-              </div>
-              {dataset.transformations.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {dataset.transformations.length} trasformazioni applicate
-                </p>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Separator />
-
-      <div className="space-y-4">
-        <Label>Train/Test Split</Label>
-        <div className="flex items-center gap-4">
-          <Slider
-            value={[localSplit]}
-            onValueChange={([v]) => setLocalSplit(v)}
-            min={50}
-            max={95}
-            step={5}
-            className="flex-1"
-          />
-          <div className="text-sm min-w-[100px]">
-            <span className="text-primary font-medium">{localSplit}%</span>
-            <span className="text-muted-foreground"> Train</span>
-          </div>
-        </div>
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Testing: {100 - localSplit}%</span>
-          <span>Training: {localSplit}%</span>
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
-          Annulla
-        </Button>
-        <Button 
-          variant="gradient" 
-          onClick={() => {
-            onUpdateSplit(localSplit);
-            onClose();
-          }}
-        >
-          Conferma
-        </Button>
-      </div>
     </div>
   );
 }
