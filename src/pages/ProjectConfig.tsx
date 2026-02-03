@@ -196,6 +196,7 @@ export default function ProjectConfig() {
                   key={process.id}
                   process={process}
                   previousProcess={previousProcess}
+                  projectId={id || ''}
                   onEdit={handleEditProcess}
                   onDelete={handleDeleteProcess}
                   onTogglePhase={handleTogglePhase}
