@@ -97,7 +97,7 @@ export function ProjectCard({ project, onClick, className }: ProjectCardProps) {
       </div>
 
       {/* Pipeline Progress */}
-      <div className="mb-4">
+      <div className="mb-4 overflow-hidden">
         <p className="text-xs text-muted-foreground mb-2">Pipeline Progress</p>
         <PipelineProgress steps={project.pipeline} compact />
       </div>
