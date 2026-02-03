@@ -287,7 +287,7 @@ export default function ProjectDetail() {
                 Avvia
               </Button>
             )}
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/projects/${id}/config`)}>
               <Settings className="w-5 h-5" />
             </Button>
           </div>

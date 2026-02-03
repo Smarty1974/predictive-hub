@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ProjectDetail from "./pages/ProjectDetail";
+import ProjectConfig from "./pages/ProjectConfig";
 import Projects from "./pages/Projects";
 import Pipelines from "./pages/Pipelines";
 import Teams from "./pages/Teams";
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
+            <Route path="/projects/:id/config" element={<ProjectConfig />} />
             <Route path="/pipelines" element={<Pipelines />} />
             <Route path="/teams" element={<Teams />} />
             <Route path="/versions" element={<Versions />} />
