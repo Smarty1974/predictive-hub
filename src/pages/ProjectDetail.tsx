@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Play, Pause, RotateCcw, GitBranch, Settings, 
   FileText, Database, BarChart3, Layers, GripVertical, 
-  Eye, EyeOff, RotateCw, Activity
+  Eye, EyeOff, RotateCw, Activity, PanelLeftClose, PanelLeft,
+  ChevronRight
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ export default function ProjectDetail() {
   const baseProject = mockProjects.find((p) => p.id === id);
   const [project, setProject] = useState(baseProject);
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+  const [isPhasePanelCollapsed, setIsPhasePanelCollapsed] = useState(false);
   
   const { 
     layout, 
@@ -351,9 +353,31 @@ export default function ProjectDetail() {
           <TabsContent value="phases" className="space-y-4">
             {/* Layout controls */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <GripVertical className="w-4 h-4" />
-                <span>Trascina le card per riordinare le fasi</span>
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsPhasePanelCollapsed(!isPhasePanelCollapsed)}
+                  className="gap-2"
+                >
+                  {isPhasePanelCollapsed ? (
+                    <>
+                      <PanelLeft className="w-4 h-4" />
+                      Mostra Fasi
+                    </>
+                  ) : (
+                    <>
+                      <PanelLeftClose className="w-4 h-4" />
+                      Nascondi Fasi
+                    </>
+                  )}
+                </Button>
+                {!isPhasePanelCollapsed && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <GripVertical className="w-4 h-4" />
+                    <span>Trascina per riordinare</span>
+                  </div>
+                )}
               </div>
               <Button variant="ghost" size="sm" onClick={handleResetLayout}>
                 <RotateCw className="w-4 h-4 mr-2" />
@@ -361,17 +385,63 @@ export default function ProjectDetail() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Draggable Phase List */}
-              <DraggablePhaseList
-                phases={orderedPipeline}
-                selectedPhaseId={selectedPhaseId}
-                onSelectPhase={setSelectedPhaseId}
-                onReorderPhases={handleReorderPhases}
-              />
+            <div className="flex gap-4">
+              {/* Collapsible Phase List */}
+              <div 
+                className={cn(
+                  "transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0",
+                  isPhasePanelCollapsed ? "w-0 opacity-0" : "w-80 opacity-100"
+                )}
+              >
+                <div className="w-80">
+                  <DraggablePhaseList
+                    phases={orderedPipeline}
+                    selectedPhaseId={selectedPhaseId}
+                    onSelectPhase={setSelectedPhaseId}
+                    onReorderPhases={handleReorderPhases}
+                    compact
+                  />
+                </div>
+              </div>
 
-              {/* Phase Detail Panel */}
-              <div className="lg:sticky lg:top-4 lg:self-start">
+              {/* Collapsed Phase Indicator */}
+              {isPhasePanelCollapsed && selectedPhaseId && (
+                <div className="flex-shrink-0">
+                  <div className="glass-card p-3 flex items-center gap-3">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setIsPhasePanelCollapsed(false)}
+                      className="h-8 w-8"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                    {(() => {
+                      const step = project.pipeline.find(s => s.id === selectedPhaseId);
+                      if (!step) return null;
+                      return (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="glass" className="text-xs">
+                            {PHASE_LABELS[step.phase]}
+                          </Badge>
+                          <Badge 
+                            variant={
+                              step.status === 'completed' ? 'default' : 
+                              step.status === 'in_progress' ? 'secondary' : 'outline'
+                            }
+                            className="text-xs"
+                          >
+                            {statusConfig[step.status].label}
+                          </Badge>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Phase Detail Panel - Full width when collapsed */}
+              <div className="flex-1 min-w-0">
                 {selectedPhaseId ? (
                   (() => {
                     const selectedStep = project.pipeline.find((s) => s.id === selectedPhaseId);

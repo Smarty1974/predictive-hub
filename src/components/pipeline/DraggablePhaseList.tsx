@@ -30,6 +30,7 @@ interface DraggablePhaseListProps {
   selectedPhaseId: string | null;
   onSelectPhase: (phaseId: string | null) => void;
   onReorderPhases: (phases: PipelineStep[]) => void;
+  compact?: boolean;
 }
 
 const statusConfig: Record<PhaseStatus, { 
@@ -79,9 +80,10 @@ interface SortablePhaseCardProps {
   index: number;
   isSelected: boolean;
   onSelect: () => void;
+  compact?: boolean;
 }
 
-function SortablePhaseCard({ phase, index, isSelected, onSelect }: SortablePhaseCardProps) {
+function SortablePhaseCard({ phase, index, isSelected, onSelect, compact }: SortablePhaseCardProps) {
   const {
     attributes,
     listeners,
@@ -99,6 +101,97 @@ function SortablePhaseCard({ phase, index, isSelected, onSelect }: SortablePhase
   const config = statusConfig[phase.status];
   const Icon = config.icon;
 
+  // Compact mode for sidebar
+  if (compact) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={cn(
+          'group relative rounded-lg border transition-all duration-200',
+          config.bgColor,
+          config.borderColor,
+          isDragging && 'shadow-lg scale-[1.02] z-50',
+          isSelected && 'ring-2 ring-primary ring-offset-1 ring-offset-background',
+          'hover:shadow-md'
+        )}
+      >
+        {/* Drag handle - compact */}
+        <div
+          {...attributes}
+          {...listeners}
+          className={cn(
+            'absolute left-0 top-0 bottom-0 w-6 flex items-center justify-center',
+            'cursor-grab active:cursor-grabbing rounded-l-lg',
+            'bg-gradient-to-r from-muted/30 to-transparent',
+            'opacity-0 group-hover:opacity-100 transition-opacity'
+          )}
+        >
+          <GripVertical className="w-3 h-3 text-muted-foreground" />
+        </div>
+
+        <div
+          className="p-3 pl-7 cursor-pointer"
+          onClick={onSelect}
+        >
+          <div className="flex items-center gap-3">
+            {/* Step number with status icon - compact */}
+            <div
+              className={cn(
+                'relative w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0',
+                'shadow-inner transition-all duration-300',
+                config.bgColor,
+                config.textColor,
+                phase.status === 'in_progress' && 'animate-pulse'
+              )}
+            >
+              <span className="font-bold">{index + 1}</span>
+              <div className={cn(
+                'absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center',
+                'bg-card border shadow-sm',
+                config.borderColor
+              )}>
+                <Icon className={cn(
+                  'w-2.5 h-2.5',
+                  config.textColor,
+                  phase.status === 'in_progress' && 'animate-spin'
+                )} />
+              </div>
+            </div>
+
+            {/* Phase info - compact */}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-foreground text-sm truncate">
+                {PHASE_LABELS[phase.phase]}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                {phase.links.length > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                    <Link2 className="w-2.5 h-2.5" />
+                    {phase.links.length}
+                  </span>
+                )}
+                {phase.activityLogs.length > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                    <FileText className="w-2.5 h-2.5" />
+                    {phase.activityLogs.length}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Chevron */}
+            <ChevronRight className={cn(
+              'w-4 h-4 text-muted-foreground transition-transform flex-shrink-0',
+              isSelected && 'rotate-90 text-primary'
+            )} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Full mode (original)
   return (
     <div
       ref={setNodeRef}
@@ -223,6 +316,7 @@ export function DraggablePhaseList({
   selectedPhaseId,
   onSelectPhase,
   onReorderPhases,
+  compact = false,
 }: DraggablePhaseListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -256,7 +350,7 @@ export function DraggablePhaseList({
         items={phases.map((p) => p.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="space-y-4">
+        <div className={cn("space-y-2", !compact && "space-y-4")}>
           {phases.map((phase, index) => (
             <SortablePhaseCard
               key={phase.id}
@@ -264,6 +358,7 @@ export function DraggablePhaseList({
               index={index}
               isSelected={selectedPhaseId === phase.id}
               onSelect={() => onSelectPhase(selectedPhaseId === phase.id ? null : phase.id)}
+              compact={compact}
             />
           ))}
         </div>
