@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Database,
   Upload,
@@ -186,6 +187,7 @@ const typeIcons: Record<string, typeof FileSpreadsheet> = {
 };
 
 export default function Data() {
+  const navigate = useNavigate();
   const [datasets, setDatasets] = useState<Dataset[]>(mockDatasets);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -286,9 +288,9 @@ export default function Data() {
               accept=".csv,.json,.parquet,.xlsx,.xls"
               className="hidden"
             />
-            <Button variant="gradient" onClick={() => fileInputRef.current?.click()}>
+            <Button variant="gradient" onClick={() => navigate('/data/upload')}>
               <Upload className="w-4 h-4 mr-2" />
-              Carica Dataset
+              Importa Dati
             </Button>
           </div>
         </div>
