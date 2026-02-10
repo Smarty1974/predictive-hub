@@ -14,6 +14,7 @@ import Pipelines from "./pages/Pipelines";
 import Teams from "./pages/Teams";
 import Versions from "./pages/Versions";
 import Data from "./pages/Data";
+import DataUpload from "./pages/DataUpload";
 import Settings from "./pages/Settings";
 import Templates from "./pages/Templates";
 
@@ -34,6 +35,7 @@ function AppContent() {
         <Route path="/teams" element={<Teams />} />
         <Route path="/versions" element={<Versions />} />
         <Route path="/data" element={<Data />} />
+        <Route path="/data/upload" element={<DataUpload />} />
         <Route path="/templates" element={<Templates />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
